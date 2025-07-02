@@ -33,4 +33,29 @@ class AuthController extends Controller
             'message' => 'Login failed',
         ], 401);
     }
+
+    public function register(Request $request)
+    {
+        //validate
+        $data = $request->validate([
+            'name' => ['required'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'confirmed'],
+        ]);
+
+        //Hash the password
+        $data['password'] = bcrypt($data['password']);
+
+        //Create the user
+        $user = \App\Models\User::create($data);
+
+        // 3. (Optional) Automatically log in the user
+        // Auth::login($user);
+        // $request->session()->regenerate();
+
+        return response()->json([
+            'message' => 'Registration successful',
+            'user' => $user,
+        ], 201);
+    }
 }

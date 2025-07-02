@@ -18,8 +18,10 @@ Route::middleware('web', 'auth:sanctum')->group(function () {
     Route::get('/dashboard', function () {
         return 'Welcome to Dash';
     });
-
 });
+
+//Sign Up
+Route::post('/register', [AuthController::class, 'register']);
 
 // Route::get('/user', function (Request $request) {
 //     return $request->user();
