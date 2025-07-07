@@ -20,6 +20,7 @@ return new class extends Migration
         
         Schema::create('students', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->boolean('local');
             $table->string('passport_nic')->unique();
             $table->timestamps();
@@ -28,6 +29,7 @@ return new class extends Migration
         Schema::create('org_admins', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('organization_id')->constrained('organizations')->onDelete('cascade');
             $table->timestamps();
         });

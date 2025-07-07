@@ -7,29 +7,23 @@ use Illuminate\Database\Eloquent\Model;
 
 class Organization extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'name',
-        'description',
-        'logo',
-        'admin_id',
-        'status',
+        'description'
     ];
 
-    /**
-     * An organization belongs to an admin (user)
-     */
-    public function admin()
+    public function students()
     {
-        return $this->belongsTo(User::class, 'admin_id');
+        return $this->hasMany(Student::class);
     }
 
-    /**
-     * An organization can have many exams
-     */
     public function exams()
     {
         return $this->hasMany(Exam::class);
+    }
+
+    public function orgAdmins()
+    {
+        return $this->hasMany(OrgAdmin::class);
     }
 }
