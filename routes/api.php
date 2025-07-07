@@ -23,6 +23,4 @@ Route::middleware('web', 'auth:sanctum')->group(function () {
 //Sign Up
 Route::post('/register', [AuthController::class, 'register']);
 
-// Route::get('/user', function (Request $request) {
-//     return $request->user();
-// })->middleware('web', 'auth:sanctum');
+Route::prefix('v1')->group(base_path('routes/api_v1.php'));
