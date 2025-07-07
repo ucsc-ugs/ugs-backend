@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\StudentController;
 use App\Http\Controllers\Api\V1\ComplaintController;
+use App\Http\Controllers\Api\V1\ExamController;
 use Illuminate\Support\Facades\Route;
 
 //Register a student
@@ -21,3 +22,13 @@ Route::middleware('web', 'auth:sanctum')->group(function () {
   Route::put('/complaints/{id}', [ComplaintController::class, 'updateComplaint']);
   Route::delete('/complaints/{id}', [ComplaintController::class, 'deleteComplaint']);
 });
+
+Route::middleware('auth:sanctum', 'web')->group(function () {
+    // Exam routes (no authentication required for now)
+});
+
+Route::get('/exam', [ExamController::class, 'index']);
+Route::post('/exam/create', [ExamController::class, 'create']);
+Route::put('/exam/update/{id}', [ExamController::class, 'update']);
+Route::delete('/exam/delete/{id}', [ExamController::class, 'delete']);
+Route::get('/exam/{id}', [ExamController::class, 'show']);
