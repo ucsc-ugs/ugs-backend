@@ -1,16 +1,13 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ExamController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+Route::post('/login', [AuthController::class, 'authenticate'])->middleware('web');
 
-
-Route::post('/login', [AuthController::class, 'authenticate'])
-    ->middleware('web');
-
-Route::middleware('web', 'auth:sanctum')->group(function () {
-
+Route::middleware('auth:sanctum', 'web')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
@@ -23,6 +20,5 @@ Route::middleware('web', 'auth:sanctum')->group(function () {
 //Sign Up
 Route::post('/register', [AuthController::class, 'register']);
 
-// Route::get('/user', function (Request $request) {
-//     return $request->user();
-// })->middleware('web', 'auth:sanctum');
+// API v1 Routes
+Route::prefix('v1')->group(base_path('routes/api_v1.php'));
