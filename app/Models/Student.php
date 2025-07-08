@@ -16,17 +16,22 @@ class Student extends Model
 
     public function user()
     {
-        return $this->hasOne(User::class);
+        return $this->hasOne(User::class, 'student_id');
     }
 
     // If you want to maintain a primary user relationship
     public function primaryUser()
     {
-        return $this->hasOne(User::class);
+        return $this->hasOne(User::class, 'student_id');
     }
 
     public function exams()
     {
         return $this->hasMany(StudentExam::class);
+    }
+
+    public function complaints()
+    {
+        return $this->hasMany(Complaint::class);
     }
 }
