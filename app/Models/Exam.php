@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Exam extends Model
 {
@@ -12,13 +13,21 @@ class Exam extends Model
     protected $fillable = [
         'name',
         'description',
-        'organization_id'
+        'organization_id',
     ];
 
+    // protected $casts = [
+    //     'starts_at' => 'datetime',
+    //     'ends_at' => 'datetime',
+    // ];
+
+    //An exam belongs to an organization
     public function organization()
     {
         return $this->belongsTo(Organization::class);
     }
+
+
 
     public function dates()
     {
