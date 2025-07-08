@@ -7,14 +7,19 @@ use Illuminate\Database\Eloquent\Model;
 class Student extends Model
 {
     protected $fillable = [
-        'user_id',
         'local',
         'passport_nic'
     ];
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->hasOne(User::class);
+    }
+
+    // If you want to maintain a primary user relationship
+    public function primaryUser()
+    {
+        return $this->hasOne(User::class);
     }
 
     public function exams()

@@ -17,14 +17,6 @@ return new class extends Migration
             $table->string('description')->nullable();
             $table->timestamps();
         });
-        
-        Schema::create('students', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->boolean('local');
-            $table->string('passport_nic')->unique();
-            $table->timestamps();
-        });
 
         Schema::create('org_admins', function (Blueprint $table) {
             $table->id();
@@ -40,9 +32,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('organizations');
-        Schema::dropIfExists('students');
-        Schema::dropIfExists('super_admins');
         Schema::dropIfExists('org_admins');
+        Schema::dropIfExists('organizations');
     }
 };
