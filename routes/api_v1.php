@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\V1\StudentController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('web', 'auth:sanctum')->group(function () {});
+//Register a student
+Route::post('/student/register', [StudentController::class, 'studentRegister']);
