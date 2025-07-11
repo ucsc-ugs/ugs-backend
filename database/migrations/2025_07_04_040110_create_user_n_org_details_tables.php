@@ -17,13 +17,15 @@ return new class extends Migration
             $table->string('description')->nullable();
             $table->timestamps();
         });
-        
+
         Schema::create('students', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->id(); // This will be the foreign key to users.id
             $table->boolean('local');
             $table->string('passport_nic')->unique();
             $table->timestamps();
+
+            // Make the id a foreign key to users.id
+            $table->foreign('id')->references('id')->on('users')->onDelete('cascade');
         });
 
         Schema::create('org_admins', function (Blueprint $table) {
