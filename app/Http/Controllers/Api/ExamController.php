@@ -12,9 +12,26 @@ class ExamController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $exams = Exam::all();
+        // Check if user has required roles
+        $user = $request->user();
+        
+        if (!$user->hasAnyRole(['super_admin', 'org_admin'])) {
+            return response()->json([
+                'message' => 'Unauthorized. Admin access required.'
+            ], 403);
+        }
+        
+        // Super admin can see all exams
+        if ($user->hasRole('super_admin')) {
+            $exams = Exam::all();
+        }
+        // Org admin can only see exams related to their organization
+        elseif ($user->hasRole('org_admin')) {
+            // Assuming there's a relationship between user and organization
+            $exams = Exam::where('organization_id', $user->organization_id)->get();
+        }
 
         return response()->json([
             'message' => 'Exams retrieved successfully',

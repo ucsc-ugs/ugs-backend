@@ -4,7 +4,7 @@ use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\OrganizationController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum', 'role:org_admin')->group(function () {
 
     // Exam routes (token authentication required)
     Route::get('/exam', [ExamController::class, 'index']);
