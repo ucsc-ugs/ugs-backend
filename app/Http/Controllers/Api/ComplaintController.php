@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\V1\CreateComplaintRequest;
-use App\Http\Requests\V1\UpdateComplaintRequest;
-use App\Http\Resources\V1\ComplaintResource;
+use App\Http\Requests\CreateComplaintRequest;
+use App\Http\Requests\UpdateComplaintRequest;
+use App\Http\Resources\ComplaintResource;
 use App\Models\Complaint;
 use App\Models\Student;
 use Illuminate\Http\Request;

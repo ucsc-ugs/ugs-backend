@@ -10,18 +10,13 @@ class Student extends Model
     use HasFactory;
     
     protected $fillable = [
-        'id',
         'local',
         'passport_nic'
     ];
 
-    // Override the primary key behavior since we're using it as a foreign key
-    public $incrementing = false;
-    protected $keyType = 'int';
-
     public function user()
     {
-        return $this->belongsTo(User::class, 'id', 'id');
+        return $this->belongsTo(User::class);
     }
 
     public function exams()

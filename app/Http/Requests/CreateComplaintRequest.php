@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests\V1;
+namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateComplaintRequest extends FormRequest
+class CreateComplaintRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,8 +22,9 @@ class UpdateComplaintRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'description' => 'sometimes|required|string|max:1000',
-            'status' => 'sometimes|required|in:pending,resolved,rejected',
+            'exam_id' => 'nullable|exists:exams,id',
+            'description' => 'required|string|max:1000',
+            'organization_id' => 'nullable|exists:organizations,id',
         ];
     }
 
@@ -35,9 +36,10 @@ class UpdateComplaintRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'exam_id.exists' => 'The selected exam does not exist.',
             'description.required' => 'The complaint description is required.',
             'description.max' => 'The complaint description may not be greater than 1000 characters.',
-            'status.in' => 'The status must be one of: pending, resolved, rejected.',
+            'organization_id.exists' => 'The selected organization does not exist.',
         ];
     }
 }

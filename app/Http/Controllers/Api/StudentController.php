@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\V1\UpdateUserRequest;
-use App\Http\Requests\V1\CreateStudentUserRequest;
-use App\Http\Resources\V1\StudentResource;
+use App\Http\Requests\UpdateUserRequest;
+use App\Http\Requests\CreateStudentUserRequest;
+use App\Http\Resources\StudentResource;
 use App\Models\Student;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
