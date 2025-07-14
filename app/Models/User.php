@@ -52,4 +52,34 @@ class User extends Authenticatable
     {
         return $this->hasOne(Student::class, 'id', 'id');
     }
+
+    public function orgAdmin()
+    {
+        return $this->hasOne(OrgAdmin::class, 'user_id', 'id');
+    }
+
+    /**
+     * Check if user is a super admin
+     * Super admins are identified by having the 'super_admin' role
+     */
+    public function isSuperAdmin()
+    {
+        return $this->hasRole('super_admin');
+    }
+
+    /**
+     * Check if user is an organization admin
+     */
+    public function isOrgAdmin()
+    {
+        return $this->orgAdmin()->exists();
+    }
+
+    /**
+     * Check if user is a student
+     */
+    public function isStudent()
+    {
+        return $this->student()->exists();
+    }
 }

@@ -16,4 +16,9 @@ class OrgAdmin extends Model
     {
         return $this->belongsTo(Organization::class);
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
