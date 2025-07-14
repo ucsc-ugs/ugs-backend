@@ -14,9 +14,19 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::factory(10)->create();
+        // First, seed the roles
+        $this->call([
+            RoleSeeder::class,
+        ]);
 
-        User::factory()->create([
+        // Create regular users and assign student role
+        $regularUsers = User::factory(10)->create();
+        foreach ($regularUsers as $user) {
+            $user->assignRole('student');
+        }
+
+        // Create test student user
+        $testStudent = User::factory()->create([
             'name' => 'test student',
             'email' => 'student@example.com',
             'student_id' => Student::factory()->create([
@@ -24,15 +34,25 @@ class DatabaseSeeder extends Seeder
                 'passport_nic' => '123456789V', // Example NIC number
             ])->id
         ]);
+        $testStudent->assignRole('student');
 
-        User::factory()->create([
+        // Create admin user
+        $adminUser = User::factory()->create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',
             'student_id' => null
-        ]); 
+        ]);
+        $adminUser->assignRole('super_admin');
+
+        // Create org admin user
+        $orgAdminUser = User::factory()->create([
+            'name' => 'Organization Admin',
+            'email' => 'orgadmin@example.com',
+            'student_id' => null
+        ]);
+        $orgAdminUser->assignRole('org_admin');
 
         $this->call([
-            RoleSeeder::class,
             OrgExamSeeder::class,
         ]);
     }
