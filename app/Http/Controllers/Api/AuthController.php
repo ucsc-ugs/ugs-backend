@@ -89,6 +89,9 @@ class AuthController extends Controller
             // Assign the student role to the user
             $user->assignRole('student');
 
+            // Send email verification notification
+            $user->sendEmailVerificationNotification();
+
             // Create token
             $token = $user->createToken('auth-token')->plainTextToken;
 
@@ -96,7 +99,7 @@ class AuthController extends Controller
 
             $userResource = UserResource::make($user->load('student'))->toArray($request);
             return response()->json([
-                'message' => 'Registration successful! Welcome to UGS.',
+                'message' => 'Registration successful! Please check your email to verify your account.',
                 'token' => $token,
             ] + $userResource, 201);
         } catch (\Exception $e) {
@@ -137,7 +140,7 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $request->user()->tokens()->delete();
 
         return response()->json([
             'message' => 'Logged out successfully'
