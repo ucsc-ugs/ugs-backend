@@ -1,8 +1,20 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\OrganizationController;
 use Illuminate\Support\Facades\Route;
+
+// Public routes
+Route::post('/login', [AuthController::class, 'authenticate']);
+
+// Protected routes (requires authentication)
+Route::middleware('auth:sanctum')->group(function () {
+    
+    Route::get('/user', [AuthController::class, 'user']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+});
 
 Route::middleware('auth:sanctum', 'role:org_admin')->group(function () {
 
