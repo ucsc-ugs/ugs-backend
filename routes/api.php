@@ -12,7 +12,7 @@ Route::prefix('admin')->group(base_path('routes/api_admin.php'));
 
 // Public routes
 Route::post('/login', [AuthController::class, 'authenticate']);
-Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register', [StudentController::class, 'register']);
 
 // Protected routes (requires authentication)
 Route::middleware('auth:sanctum')->group(function () {
