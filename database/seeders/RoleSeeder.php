@@ -46,9 +46,9 @@ class RoleSeeder extends Seeder
                 'email' => 'admin@ugs.com',
                 'password' => Hash::make('admin123'),
             ]);
-            
+
             $superAdmin->assignRole('super_admin');
-            
+
             $this->command->info('Default super admin created: admin@ugs.com / admin123');
         }
     }

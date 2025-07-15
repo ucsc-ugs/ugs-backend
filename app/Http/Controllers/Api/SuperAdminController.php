@@ -187,7 +187,7 @@ class SuperAdminController extends Controller
         } catch (\Exception $e) {
             DB::rollback();
             Log::error('Org admin creation error: ' . $e->getMessage());
-            
+
             if (str_contains($e->getMessage(), 'users_email_unique')) {
                 return response()->json([
                     'message' => 'Creation failed.',

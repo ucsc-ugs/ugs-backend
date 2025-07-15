@@ -11,7 +11,7 @@ class OrgAdmin extends Model
         'user_id',
         'name'
     ];
-    
+
     public function organization()
     {
         return $this->belongsTo(Organization::class);

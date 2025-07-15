@@ -24,7 +24,7 @@ class SuperAdminAuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
-            
+
             // Check if user is a super admin
             if (!$user->isSuperAdmin()) {
                 Auth::logout();
@@ -35,7 +35,7 @@ class SuperAdminAuthController extends Controller
 
             // Create token for super admin
             $token = $user->createToken('super-admin-token')->plainTextToken;
-            
+
             $user->load(['roles']);
 
             return response()->json([
@@ -69,11 +69,11 @@ class SuperAdminAuthController extends Controller
     public function user(Request $request)
     {
         $user = $request->user();
-        
+
         if (!$user->isSuperAdmin()) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
-        
+
         $user->load(['roles']);
 
         return response()->json([
@@ -121,7 +121,6 @@ class SuperAdminAuthController extends Controller
                 'user' => $user,
                 'token' => $token
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollback();
             Log::error('Super admin creation error: ' . $e->getMessage());

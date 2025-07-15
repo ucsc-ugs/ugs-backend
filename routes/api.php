@@ -15,18 +15,18 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::prefix('admin')->group(function () {
     Route::post('/login', [SuperAdminAuthController::class, 'login']);
     Route::post('/setup', [SuperAdminAuthController::class, 'createSuperAdmin']);
-    
+
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/user', [SuperAdminAuthController::class, 'user']);
         Route::post('/logout', [SuperAdminAuthController::class, 'logout']);
         Route::get('/dashboard', [SuperAdminController::class, 'dashboard']);
-        
+
         // Organization management
         Route::get('/organizations', [SuperAdminController::class, 'getOrganizations']);
         Route::post('/organizations', [SuperAdminController::class, 'createOrganization']);
         Route::put('/organizations/{id}', [SuperAdminController::class, 'updateOrganization']);
         Route::delete('/organizations/{id}', [SuperAdminController::class, 'deleteOrganization']);
-        
+
         // Org Admin management
         Route::get('/org-admins', [SuperAdminController::class, 'getOrgAdmins']);
         Route::post('/org-admins', [SuperAdminController::class, 'createOrgAdmin']);
