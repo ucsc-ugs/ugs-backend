@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('exams', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
-            $table->string('description')->nullable();
+            $table->text('description')->nullable();
             $table->foreignId('organization_id')->constrained('organizations')->onDelete('cascade');
             $table->timestamps();
         });
@@ -44,6 +44,8 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('student_exams');
+        Schema::dropIfExists('exam_dates');
         Schema::dropIfExists('exams');
     }
 };

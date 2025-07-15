@@ -2,14 +2,23 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Complaint extends Model
 {
+    use HasFactory;
+    
     protected $fillable = [
         'student_id',
         'exam_id',
-        'description'
+        'description',
+        'status',
+        'created_by',
+        'updated_by',
+        'resolved_by',
+        'rejected_by',
+        'organization_id'
     ];
 
     protected $casts = [

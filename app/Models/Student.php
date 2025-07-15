@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Student extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'id',
         'local',
         'passport_nic'
     ];
@@ -24,5 +26,10 @@ class Student extends Model
     public function exams()
     {
         return $this->hasMany(StudentExam::class);
+    }
+
+    public function complaints()
+    {
+        return $this->hasMany(Complaint::class);
     }
 }

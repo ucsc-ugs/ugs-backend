@@ -14,14 +14,7 @@ return new class extends Migration
         Schema::create('organizations', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
-            $table->string('description')->nullable();
-            $table->timestamps();
-        });
-
-        Schema::create('students', function (Blueprint $table) {
-            $table->id(); // This will be the foreign key to users.id
-            $table->boolean('local');
-            $table->string('passport_nic')->unique();
+            $table->text('description')->nullable();
             $table->timestamps();
 
             // Make the id a foreign key to users.id
@@ -42,9 +35,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('organizations');
-        Schema::dropIfExists('students');
-        Schema::dropIfExists('super_admins');
         Schema::dropIfExists('org_admins');
+        Schema::dropIfExists('organizations');
     }
 };

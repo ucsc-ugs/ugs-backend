@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\RedirectResponse;
+use App\Http\Requests\CreateStudentUserRequest;
+use App\Http\Resources\StudentResource;
+use App\Models\Student;
+use App\Models\User;
+use Database\Factories\StudentFactory;
 use Illuminate\Http\Request;
-use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -33,8 +36,9 @@ class AuthController extends Controller
 
             return response()->json([
                 'message' => 'Login successful',
-                'user' => $user,
                 'token' => $token,
+                'data' => StudentResource::make($user),
+
             ]);
         }
 
@@ -43,36 +47,32 @@ class AuthController extends Controller
         ], 401);
     }
 
-    public function register(Request $request)
+    public function register(CreateStudentUserRequest $request)
     {
-        // Validate input
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'confirmed', 'min:8'],
-            'local' => ['required', 'boolean'],
-            'passport_nic' => ['required', 'string', 'max:255'],
-        ]);
+        $validated = $request->validated();
 
         try {
             DB::beginTransaction();
 
-            // Create the user
-            $user = \App\Models\User::create([
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'password' => bcrypt($data['password']),
-            ]);
-
             // Create the student record with the same ID
             $student = \App\Models\Student::create([
-                'id' => $user->id,
-                'local' => $data['local'],
-                'passport_nic' => $data['passport_nic'],
+                'local' => $validated['local'],
+                'passport_nic' => $validated['passport_nic'],
+            ]);
+
+            // Create the user
+            $user = \App\Models\User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => bcrypt($validated['password']),
+                'student_id' => $student->id,
             ]);
 
             // Load the student relationship
             $user->load('student');
+
+            // Assign the student role to the user
+            $user->assignRole('student');
 
             // Create token
             $token = $user->createToken('auth-token')->plainTextToken;
@@ -81,11 +81,15 @@ class AuthController extends Controller
 
             return response()->json([
                 'message' => 'Registration successful! Welcome to UGS.',
-                'user' => $user,
                 'token' => $token,
+                'data' => StudentResource::make($user->load('student'))
             ], 201);
         } catch (\Exception $e) {
             DB::rollback();
+
+            if (isset($student)) {
+                $student->delete();
+            }
 
             // Log the actual error for debugging
             Log::error('Registration error: ' . $e->getMessage());
@@ -108,7 +112,10 @@ class AuthController extends Controller
 
             return response()->json([
                 'message' => 'Registration failed. Please try again.',
-                'errors' => ['general' => 'Something went wrong during registration.']
+                'errors' => [
+                    'general' => 'Something went wrong during registration.',
+                    'error' => $e->getMessage() // Include the error message for debugging
+                ]
             ], 500);
         }
     }
