@@ -28,17 +28,38 @@ class AuthController extends Controller
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
 
-            // Load student relationship
-            $user->load('student');
-
             // Create token
             $token = $user->createToken('auth-token')->plainTextToken;
+
+            // Check if user is super admin (accessed via admin endpoint)
+            if ($request->is('api/admin/*')) {
+                // Verify user has super admin role
+                if (!$user->isSuperAdmin()) {
+                    Auth::logout();
+                    return response()->json([
+                        'message' => 'Access denied. Super admin privileges required.',
+                    ], 403);
+                }
+
+                return response()->json([
+                    'message' => 'Super admin login successful',
+                    'token' => $token,
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'role' => 'super_admin'
+                    ],
+                ]);
+            }
+
+            // Regular student login
+            $user->load('student');
 
             return response()->json([
                 'message' => 'Login successful',
                 'token' => $token,
                 'data' => StudentResource::make($user),
-
             ]);
         }
 
