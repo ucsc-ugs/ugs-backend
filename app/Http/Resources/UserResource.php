@@ -5,7 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class StudentResource extends JsonResource
+class UserResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -16,14 +16,16 @@ class StudentResource extends JsonResource
     {
         return [
             'type' => 'user',
-            'role' => 'student',
+            'role' => $this->getRoleNames()->first(),
             'id' => $this->id,
             'data' => [
                 'name' => $this->name,
                 'email' => $this->email,
                 'created_at' => $this->created_at,
-                'local' => $this->student?->local,
-                'passport_nic' => $this->student?->passport_nic,
+                'student' => $this->getRoleNames()->first() === 'student' ? [
+                    'local' => $this->student?->local,
+                    'passport_nic' => $this->student?->passport_nic,
+                ] : null,
             ],
             'meta' => [
                 'permissions' => $this->getAllPermissions()->pluck('name'),

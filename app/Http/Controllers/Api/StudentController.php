@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\CreateStudentUserRequest;
-use App\Http\Resources\StudentResource;
+use App\Http\Resources\UserResource;
 use App\Models\Student;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
@@ -46,7 +46,7 @@ class StudentController extends Controller
 
         return response()->json([
             'message' => 'Student registered successfully',
-            'data' => StudentResource::make($student->user->load('student'))
+            'data' => UserResource::make($student->user->load('student'))
         ]);
     }
 
@@ -62,7 +62,7 @@ class StudentController extends Controller
         
         return response()->json([
             'message' => 'Profile retrieved successfully',
-            'data' => StudentResource::make($user->load('student'))
+            'data' => UserResource::make($user->load('student'))
         ]);
     }
 
@@ -86,7 +86,7 @@ class StudentController extends Controller
 
         return response()->json([
             'message' => 'Profile updated successfully',
-            'data' => StudentResource::make($user->fresh()->load('student'))
+            'data' => UserResource::make($user->fresh()->load('student'))
         ]);
     }
 
