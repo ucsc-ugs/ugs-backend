@@ -31,7 +31,7 @@ class AuthController extends Controller
             // Check if user is super admin (accessed via admin endpoint)
             if ($request->is('api/admin/*')) {
                 // Verify user has super admin role
-                if (!$user->isSuperAdmin()) {
+                if (!$user->hasRole('super_admin')) {
                     Auth::logout();
                     return response()->json([
                         'message' => 'Access denied. Super admin privileges required.',

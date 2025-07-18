@@ -9,14 +9,14 @@ use Illuminate\Support\Facades\Route;
 Route::post('/login', [AuthController::class, 'authenticate']);
 
 // Protected routes (requires authentication)
-Route::middleware('auth:sanctum')->group(function () {
-    
+Route::middleware('auth:sanctum', 'role:org_admin,super_admin')->group(function () {
+
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
 });
 
-Route::middleware('auth:sanctum', 'role:org_admin')->group(function () {
+Route::middleware('auth:sanctum', 'role:org_admin,super_admin')->group(function () {
 
     // Exam routes (token authentication required)
     Route::get('/exam', [ExamController::class, 'index']);
