@@ -31,33 +31,30 @@ class AuthController extends Controller
             // Check if user is super admin (accessed via admin endpoint)
             if ($request->is('api/admin/*')) {
                 // Verify user has super admin role
-                if (!$user->hasRole('super_admin')) {
+                if (!($user->hasRole('super_admin') || $user->hasRole('org_admin'))) {
                     Auth::logout();
                     return response()->json([
                         'message' => 'Access denied. Super admin privileges required.',
                     ], 403);
                 }
 
+                $userResource = UserResource::make($user)->toArray($request);
                 return response()->json([
-                    'message' => 'Super admin login successful',
+                    'message' => 'Admin login successful',
                     'token' => $token,
-                    'user' => [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                        'role' => 'super_admin'
-                    ],
-                ]);
+                ] + $userResource);
+
+                
             }
 
             // Regular student login
             $user->load('student');
 
+            $userResource = UserResource::make($user)->toArray($request);
             return response()->json([
                 'message' => 'Login successful',
                 'token' => $token,
-                'data' => UserResource::make($user),
-            ]);
+            ] + $userResource);
         }
 
         return response()->json([
@@ -97,11 +94,11 @@ class AuthController extends Controller
 
             DB::commit();
 
+            $userResource = UserResource::make($user->load('student'))->toArray($request);
             return response()->json([
                 'message' => 'Registration successful! Welcome to UGS.',
                 'token' => $token,
-                'data' => UserResource::make($user->load('student'))
-            ], 201);
+            ] + $userResource, 201);
         } catch (\Exception $e) {
             DB::rollback();
 
