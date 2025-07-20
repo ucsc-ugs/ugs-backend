@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\CreateStudentUserRequest;
-use App\Http\Resources\StudentResource;
+use App\Http\Resources\UserResource;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -54,7 +54,7 @@ class StudentController extends Controller
             return response()->json([
                 'message' => 'Registration successful! Please check your email to verify your account.',
                 'token' => $token,
-                'data' => StudentResource::make($user->load('student'))
+                'data' => UserResource::make($user->load('student'))
             ], 201);
 
         } catch (\Exception $e) {
