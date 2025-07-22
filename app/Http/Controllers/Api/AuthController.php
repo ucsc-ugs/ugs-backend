@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -62,9 +64,6 @@ class AuthController extends Controller
     /**
      * Logout the authenticated user.
      * Deletes the user's tokens.
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
      */
     public function logout(Request $request)
     {
@@ -73,16 +72,5 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Logged out successfully'
         ]);
-    }
-
-    /**
-     * Get the authenticated user.
-     */
-    public function user(Request $request)
-    {
-        $user = $request->user();
-        $user->load('student');
-
-        return UserResource::make($user);
     }
 }

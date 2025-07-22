@@ -3,20 +3,27 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'authenticate']);
 
 // Protected routes (requires authentication)
-Route::middleware('auth:sanctum', 'role:org_admin,super_admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(function () {
 
-    Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/user', [UserController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Profile maintenance
+    Route::get('/profile', [UserController::class, 'user']); // Same as /api/user endpoint
+    Route::patch('/profile', [UserController::class, 'updateProfile']);
+    // Route::delete('/profile', [UserController::class, 'deleteProfile']);  // Not implemented yet
+    Route::put('/profile/password', [UserController::class, 'updatePassword']);
 
 });
 
-Route::middleware('auth:sanctum', 'role:org_admin,super_admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(function () {
 
     // Exam routes (token authentication required)
     Route::get('/exam', [ExamController::class, 'index']);

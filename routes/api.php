@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ComplaintController;
 use App\Http\Controllers\Api\StudentController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -17,19 +18,19 @@ Route::post('/register', [StudentController::class, 'register']);
 // Protected routes (requires authentication)
 Route::middleware('auth:sanctum')->group(function () {
     
-    Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/user', [UserController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
 });
 
 // Protected routes (requires authentication + email verification)
-Route::middleware(['auth:sanctum', 'verified'])->group(function () {
+Route::middleware(['auth:sanctum'])->group(function () {
 
     // Profile maintenance
-    Route::get('/profile', [StudentController::class, 'getProfile']);
-    Route::patch('/profile', [StudentController::class, 'updateProfile']);
-    Route::delete('/profile', [StudentController::class, 'deleteProfile']);
-    Route::put('/profile/password', [StudentController::class, 'updatePassword']);
+    Route::get('/profile', [UserController::class, 'user']); // Same as /api/user endpoint
+    Route::patch('/profile', [UserController::class, 'updateProfile']);
+    // Route::delete('/profile', [UserController::class, 'deleteProfile']);  // Not implemented yet
+    Route::put('/profile/password', [UserController::class, 'updatePassword']);
 
     // manage complaints
     Route::get('/complaints', [ComplaintController::class, 'getComplaints']);
