@@ -11,7 +11,7 @@ use App\Http\Controllers\Api\OrganizationController;
 Route::post('/login', [AuthController::class, 'authenticate']);
 
 // Protected routes (requires authentication)
-Route::middleware('auth:sanctum', 'role:org_admin,super_admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(function () {
 
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -32,7 +32,7 @@ Route::middleware('auth:sanctum', 'role:org_admin,super_admin')->group(function 
     Route::delete('/org-admins/{id}', [SuperAdminController::class, 'deleteOrgAdmin']);
 });
 
-Route::middleware('auth:sanctum', 'role:org_admin,super_admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(function () {
 
     // Exam routes (token authentication required)
     Route::get('/exam', [ExamController::class, 'index']);

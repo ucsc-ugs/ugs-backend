@@ -26,6 +26,14 @@ class Organization extends Model
     }
 
     /**
+     * An organization can have many organizational admins
+     */
+    public function orgAdmins()
+    {
+        return $this->hasMany(OrgAdmin::class);
+    }
+
+    /**
      * An organization can have many exams
      */
     public function exams()
