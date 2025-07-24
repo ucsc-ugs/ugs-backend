@@ -25,9 +25,6 @@ class UpdateUserRequest extends FormRequest
         return [
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|max:255|unique:users,email,' . Auth::user()?->id,
-            'student_id' => 'sometimes|exists:students,id',
-            'local' => 'sometimes|boolean',
-            'passport_nic' => 'sometimes|string|max:20|unique:students,passport_nic,' . Auth::user()?->student?->id
         ];
     }
 }

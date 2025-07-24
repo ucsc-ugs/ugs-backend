@@ -44,7 +44,7 @@ class StudentController extends Controller
             $user->assignRole('student');
 
             // Send email verification notification
-            $user->sendEmailVerificationNotification();
+            // $user->sendEmailVerificationNotification();
 
             // Create token
             $token = $user->createToken('auth-token')->plainTextToken;
@@ -93,75 +93,5 @@ class StudentController extends Controller
         }
     }
 
-    /**
-     * Get the authenticated user's profile.
-     * 
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getProfile()
-    {
-        $userId = Auth::user()->id;
-        $user = User::findOrFail($userId);
-        
-        return response()->json([
-            'message' => 'Profile retrieved successfully',
-            'data' => UserResource::make($user->load('student'))
-        ]);
-    }
-
-    /**
-     * Update the authenticated user's profile.
-     * 
-     * @param UpdateCandidateUserRequest $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function updateProfile(UpdateUserRequest $request)
-    {
-        $user = Auth::user();
-
-        $validated = $request->validated();
-
-        // Remove password fields if they exist (these should be handled separately)
-        unset($validated['current_password'], $validated['password'], $validated['password_confirmation']);
-
-        $user->update($validated);
-        $user->student?->update($request->only(['local', 'passport_nic']));
-
-        return response()->json([
-            'message' => 'Profile updated successfully',
-            'data' => UserResource::make($user->fresh()->load('student'))
-        ]);
-    }
-
-    /**
-     * Update the authenticated user's password.
-     * 
-     * @param UpdateUserRequest $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function updatePassword(UpdateUserRequest $request)
-    {
-        $user = Auth::user();
-        $validated = $request->validated();
-
-        // Verify current password
-        if (!password_verify($validated['current_password'], $user->password_hash)) {
-            return response()->json([
-                'message' => 'Current password is incorrect'
-            ], 400);
-        }
-
-        // Update password
-        $user->update([
-            'password_hash' => bcrypt($validated['password'])
-        ]);
-
-        return response()->json([
-            'message' => 'Password updated successfully'
-        ]);
-    }
-
-    /**
-     * Profile soft delete should be implemented.
-     */
+    
 }

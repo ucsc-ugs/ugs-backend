@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\SuperAdminController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\UserController;
 
 
 // Super Admin Authentication (Public)
@@ -13,7 +14,7 @@ Route::post('/login', [AuthController::class, 'authenticate']);
 // Protected routes (requires authentication)
 Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(function () {
 
-    Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/user', [UserController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Dashboard
@@ -30,6 +31,12 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::post('/org-admins', [SuperAdminController::class, 'createOrgAdmin']);
     Route::put('/org-admins/{id}', [SuperAdminController::class, 'updateOrgAdmin']);
     Route::delete('/org-admins/{id}', [SuperAdminController::class, 'deleteOrgAdmin']);
+    // Profile maintenance
+    Route::get('/profile', [UserController::class, 'user']); // Same as /api/user endpoint
+    Route::patch('/profile', [UserController::class, 'updateProfile']);
+    // Route::delete('/profile', [UserController::class, 'deleteProfile']);  // Not implemented yet
+    Route::put('/profile/password', [UserController::class, 'updatePassword']);
+
 });
 
 Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(function () {
