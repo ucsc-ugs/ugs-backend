@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\UserController;
+use Illuminate\Http\Request;
 
 
 // Super Admin Authentication (Public)
@@ -31,15 +32,13 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::post('/org-admins', [SuperAdminController::class, 'createOrgAdmin']);
     Route::put('/org-admins/{id}', [SuperAdminController::class, 'updateOrgAdmin']);
     Route::delete('/org-admins/{id}', [SuperAdminController::class, 'deleteOrgAdmin']);
+
     // Profile maintenance
     Route::get('/profile', [UserController::class, 'user']); // Same as /api/user endpoint
     Route::patch('/profile', [UserController::class, 'updateProfile']);
+
     // Route::delete('/profile', [UserController::class, 'deleteProfile']);  // Not implemented yet
     Route::put('/profile/password', [UserController::class, 'updatePassword']);
-
-});
-
-Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(function () {
 
     // Exam routes (token authentication required)
     Route::get('/exam', [ExamController::class, 'index']);
@@ -47,6 +46,19 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::put('/exam/update/{id}', [ExamController::class, 'update']);
     Route::delete('/exam/delete/{id}', [ExamController::class, 'delete']);
     Route::get('/exam/{id}', [ExamController::class, 'show']);
+
+    // Debug route to test user context
+    Route::get('/debug/user-context', function (Request $request) {
+        $user = $request->user();
+        return response()->json([
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'roles' => $user->roles->pluck('name'),
+            'org_admin' => $user->orgAdmin,
+            'is_org_admin' => $user->hasRole('org_admin'),
+            'is_super_admin' => $user->hasRole('super_admin')
+        ]);
+    });
 
     // Organization routes (token authentication requiredd)
     Route::get('/organization', [OrganizationController::class, 'index']);

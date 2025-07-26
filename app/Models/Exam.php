@@ -26,6 +26,12 @@ class Exam extends Model
         return $this->belongsTo(Organization::class);
     }
 
+    // An exam can have many exam dates
+    public function examDates()
+    {
+        return $this->hasMany(ExamDate::class);
+    }
+
 
 
     public function dates()
