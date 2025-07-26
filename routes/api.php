@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ComplaintController;
+use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
@@ -14,10 +15,11 @@ Route::prefix('admin')->group(base_path('routes/api_admin.php'));
 // Public routes
 Route::post('/login', [AuthController::class, 'authenticate']);
 Route::post('/register', [StudentController::class, 'register']);
+Route::get('/exams', [ExamController::class, 'publicIndex']); // Public exam listing for students
 
 // Protected routes (requires authentication)
 Route::middleware('auth:sanctum')->group(function () {
-    
+
     Route::get('/user', [UserController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
 });

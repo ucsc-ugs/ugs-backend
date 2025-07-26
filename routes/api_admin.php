@@ -66,4 +66,5 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::put('/organization/update/{id}', [OrganizationController::class, 'update']);
     Route::delete('/organization/delete/{id}', [OrganizationController::class, 'delete']);
     Route::get('/organization/{id}', [OrganizationController::class, 'show']);
+    Route::post('/organization/{id}/logo', [OrganizationController::class, 'uploadLogo']);
 });

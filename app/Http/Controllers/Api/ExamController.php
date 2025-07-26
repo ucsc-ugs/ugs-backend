@@ -11,6 +11,21 @@ use Illuminate\Http\JsonResponse;
 class ExamController extends Controller
 {
     /**
+     * Display a public listing of all exams for students
+     */
+    public function publicIndex(): JsonResponse
+    {
+        $exams = Exam::with(['organization', 'examDates'])
+            ->where('created_at', '<=', now()) // Only show created exams
+            ->get();
+
+        return response()->json([
+            'message' => 'Exams retrieved successfully',
+            'data' => $exams
+        ]);
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request): JsonResponse
@@ -65,6 +80,7 @@ class ExamController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'price' => 'required|numeric|min:0',
             'organization_id' => 'required|exists:organizations,id',
             'exam_dates' => 'nullable|array',
             'exam_dates.*.date' => 'required|date_format:Y-m-d\TH:i',
@@ -91,6 +107,7 @@ class ExamController extends Controller
         $exam = Exam::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
+            'price' => $validated['price'],
             'organization_id' => $validated['organization_id']
         ]);
 
@@ -149,6 +166,7 @@ class ExamController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
+            'price' => 'sometimes|numeric|min:0',
             'organization_id' => 'sometimes|exists:organizations,id',
             'exam_dates' => 'nullable|array',
             'exam_dates.*.date' => 'required|date_format:Y-m-d\TH:i',
@@ -159,6 +177,7 @@ class ExamController extends Controller
         $exam->update([
             'name' => $validated['name'] ?? $exam->name,
             'description' => $validated['description'] ?? $exam->description,
+            'price' => $validated['price'] ?? $exam->price,
             'organization_id' => $validated['organization_id'] ?? $exam->organization_id
         ]);
 
