@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SuperAdminController;
+use App\Http\Controllers\Api\OrgAdminController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\OrganizationController;
@@ -27,11 +28,17 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::put('/organizations/{id}', [SuperAdminController::class, 'updateOrganization']);
     Route::delete('/organizations/{id}', [SuperAdminController::class, 'deleteOrganization']);
 
-    // Org Admins Management
+    // Org Admins Management (Super Admin only)
     Route::get('/org-admins', [SuperAdminController::class, 'getOrgAdmins']);
     Route::post('/org-admins', [SuperAdminController::class, 'createOrgAdmin']);
     Route::put('/org-admins/{id}', [SuperAdminController::class, 'updateOrgAdmin']);
     Route::delete('/org-admins/{id}', [SuperAdminController::class, 'deleteOrgAdmin']);
+
+    // Organization Admin Management (Org Admin can manage other admins in their organization)
+    Route::get('/my-org-admins', [OrgAdminController::class, 'getOrgAdmins']);
+    Route::post('/my-org-admins', [OrgAdminController::class, 'createOrgAdmin']);
+    Route::put('/my-org-admins/{id}', [OrgAdminController::class, 'updateOrgAdmin']);
+    Route::delete('/my-org-admins/{id}', [OrgAdminController::class, 'deleteOrgAdmin']);
 
     // Profile maintenance
     Route::get('/profile', [UserController::class, 'user']); // Same as /api/user endpoint
