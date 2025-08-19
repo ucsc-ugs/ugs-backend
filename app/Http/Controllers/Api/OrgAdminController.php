@@ -215,4 +215,112 @@ class OrgAdminController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get the authenticated org admin's organization details
+     */
+    public function getMyOrganization(Request $request)
+    {
+        $user = $request->user();
+
+        // Check if user is an org admin
+        $orgAdmin = $user->orgAdmin;
+        if (!$orgAdmin) {
+            return response()->json(['message' => 'Unauthorized. Organization admin access required.'], 403);
+        }
+
+        $organization = $orgAdmin->organization;
+
+        return response()->json([
+            'message' => 'Organization details retrieved successfully',
+            'data' => $organization
+        ]);
+    }
+
+    /**
+     * Update the authenticated org admin's organization details
+     */
+    public function updateMyOrganization(Request $request)
+    {
+        $user = $request->user();
+
+        // Check if user is an org admin
+        $orgAdmin = $user->orgAdmin;
+        if (!$orgAdmin) {
+            return response()->json(['message' => 'Unauthorized. Organization admin access required.'], 403);
+        }
+
+        $data = $request->validate([
+            'name' => ['sometimes', 'string', 'max:255'],
+            'description' => ['sometimes', 'string', 'max:1000'],
+            'contact_email' => ['sometimes', 'email'],
+            'phone_number' => ['sometimes', 'string', 'max:20'],
+            'address' => ['sometimes', 'string', 'max:500'],
+            'website' => ['sometimes', 'url', 'max:255']
+        ]);
+
+        try {
+            $organization = $orgAdmin->organization;
+            $organization->update($data);
+
+            return response()->json([
+                'message' => 'Organization updated successfully',
+                'data' => $organization
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Organization update error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to update organization',
+                'errors' => ['general' => 'Something went wrong during update.']
+            ], 500);
+        }
+    }
+
+    /**
+     * Upload logo for the authenticated org admin's organization
+     */
+    public function uploadOrganizationLogo(Request $request)
+    {
+        $user = $request->user();
+
+        // Check if user is an org admin
+        $orgAdmin = $user->orgAdmin;
+        if (!$orgAdmin) {
+            return response()->json(['message' => 'Unauthorized. Organization admin access required.'], 403);
+        }
+
+        $request->validate([
+            'logo' => ['required', 'image', 'max:5120'] // 5MB max
+        ]);
+
+        try {
+            $organization = $orgAdmin->organization;
+
+            // Delete old logo if exists
+            if ($organization->logo) {
+                $oldLogoPath = storage_path('app/public' . $organization->logo);
+                if (file_exists($oldLogoPath)) {
+                    unlink($oldLogoPath);
+                }
+            }
+
+            // Store new logo
+            $logoPath = $request->file('logo')->store('organization-logos', 'public');
+            $organization->update(['logo' => '/' . $logoPath]);
+
+            return response()->json([
+                'message' => 'Logo uploaded successfully',
+                'data' => [
+                    'logo_url' => '/storage/' . $logoPath,
+                    'organization' => $organization
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Logo upload error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to upload logo',
+                'errors' => ['logo' => 'Something went wrong during upload.']
+            ], 500);
+        }
+    }
 }

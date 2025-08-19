@@ -40,6 +40,11 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::put('/my-org-admins/{id}', [OrgAdminController::class, 'updateOrgAdmin']);
     Route::delete('/my-org-admins/{id}', [OrgAdminController::class, 'deleteOrgAdmin']);
 
+    // Organization Management (Org Admin can manage their own organization)
+    Route::get('/my-organization', [OrgAdminController::class, 'getMyOrganization']);
+    Route::put('/my-organization', [OrgAdminController::class, 'updateMyOrganization']);
+    Route::post('/my-organization/logo', [OrgAdminController::class, 'uploadOrganizationLogo']);
+
     // Profile maintenance
     Route::get('/profile', [UserController::class, 'user']); // Same as /api/user endpoint
     Route::patch('/profile', [UserController::class, 'updateProfile']);
