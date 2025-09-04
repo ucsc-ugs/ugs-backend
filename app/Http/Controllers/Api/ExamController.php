@@ -5,8 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamDate;
+use App\Models\StudentExam;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Laravel\Pail\ValueObjects\Origin\Console;
 
 class ExamController extends Controller
 {
@@ -225,5 +229,44 @@ class ExamController extends Controller
         return response()->json([
             'message' => 'Exam deleted successfully'
         ]);
+    }
+
+    public function regForExam()
+    {
+        $exam = request()->examId;
+
+        if (!$exam) {
+            return response()->json([
+                'message' => 'Exam ID is required'
+            ], 400);
+        }
+
+        // Proceed with registration logic
+        $registration = StudentExam::create([
+            'index_number' => $this->genIndexNumber('EXAM'),
+            'student_id' => Auth::id(),
+            'exam_id' => $exam,
+            'payment_id' => null,
+        ]);
+
+        $registration->load('exam');
+
+        $paymentController = new PaymentController();
+        $payhere_form_data = $paymentController->initiatePayment($registration->id, $registration->exam->price, [
+            'first_name' => explode(' ', trim(Auth::user()->name))[0],
+            'last_name' => explode(' ', trim(Auth::user()->name))[1] ?? '',
+            'email' => Auth::user()->email,
+            'phone' => Auth::user()->phone,
+        ]);
+
+        return response()->json($payhere_form_data);
+    }
+
+    /**
+     * Generate a unique index number for the exam registration.
+     */
+    private function genIndexNumber(string $prefix): string
+    {
+        return $prefix . mt_rand(10000000, 99999999);
     }
 }

@@ -10,6 +10,7 @@ class StudentExam extends Model
         'index_number',
         'student_id',
         'exam_id',
+        'payment_id',
         'status',
         'attended',
         'result'
@@ -17,11 +18,16 @@ class StudentExam extends Model
 
     public function student()
     {
-        return $this->belongsTo(Student::class);
+        return $this->belongsTo(User::class);
     }
 
     public function exam()
     {
         return $this->belongsTo(Exam::class);
+    }
+
+    public function payment()
+    {
+        return $this->hasOne(Payment::class);
     }
 }
