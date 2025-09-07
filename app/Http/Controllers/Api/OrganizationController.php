@@ -108,4 +108,44 @@ class OrganizationController extends Controller
             'message' => 'Organization deleted successfully'
         ]);
     }
+
+    /**
+     * Upload logo for organization.
+     */
+    public function uploadLogo(Request $request, string $id): JsonResponse
+    {
+        $organization = Organization::find($id);
+
+        if (!$organization) {
+            return response()->json([
+                'message' => 'Organization not found'
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'logo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048', // 2MB max
+        ]);
+
+        if ($request->hasFile('logo')) {
+            $file = $request->file('logo');
+            $filename = time() . '_' . $organization->id . '.' . $file->getClientOriginalExtension();
+
+            // Store in public/storage/organizations directory
+            $path = $file->storeAs('organizations', $filename, 'public');
+
+            // Update organization with logo path
+            $organization->update([
+                'logo' => '/storage/' . $path
+            ]);
+
+            return response()->json([
+                'message' => 'Logo uploaded successfully',
+                'data' => $organization
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'No logo file provided'
+        ], 400);
+    }
 }

@@ -26,6 +26,7 @@ class OrgExamSeeder extends Seeder
             'name' => 'Sample Exam 1',
             'description' => 'This is a sample exam for testing purposes.',
             'organization_id' => Organization::where('name', 'University of Colombo School of Computing')->first()->id,
+            'price' => 1000,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -34,6 +35,7 @@ class OrgExamSeeder extends Seeder
             'name' => 'Sample Exam 2',
             'description' => 'This is a sample exam for testing purposes.',
             'organization_id' => Organization::where('name', 'University of Colombo School of Computing')->first()->id,
+            'price' => 1500,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

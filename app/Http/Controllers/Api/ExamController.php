@@ -5,11 +5,30 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamDate;
+use App\Models\StudentExam;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Laravel\Pail\ValueObjects\Origin\Console;
 
 class ExamController extends Controller
 {
+    /**
+     * Display a public listing of all exams for students
+     */
+    public function publicIndex(): JsonResponse
+    {
+        $exams = Exam::with(['organization', 'examDates'])
+            ->where('created_at', '<=', now()) // Only show created exams
+            ->get();
+
+        return response()->json([
+            'message' => 'Exams retrieved successfully',
+            'data' => $exams
+        ]);
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -65,6 +84,7 @@ class ExamController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'price' => 'required|numeric|min:0',
             'organization_id' => 'required|exists:organizations,id',
             'exam_dates' => 'nullable|array',
             'exam_dates.*.date' => 'required|date_format:Y-m-d\TH:i',
@@ -91,6 +111,7 @@ class ExamController extends Controller
         $exam = Exam::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
+            'price' => $validated['price'],
             'organization_id' => $validated['organization_id']
         ]);
 
@@ -149,6 +170,7 @@ class ExamController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
+            'price' => 'sometimes|numeric|min:0',
             'organization_id' => 'sometimes|exists:organizations,id',
             'exam_dates' => 'nullable|array',
             'exam_dates.*.date' => 'required|date_format:Y-m-d\TH:i',
@@ -159,6 +181,7 @@ class ExamController extends Controller
         $exam->update([
             'name' => $validated['name'] ?? $exam->name,
             'description' => $validated['description'] ?? $exam->description,
+            'price' => $validated['price'] ?? $exam->price,
             'organization_id' => $validated['organization_id'] ?? $exam->organization_id
         ]);
 
@@ -206,5 +229,44 @@ class ExamController extends Controller
         return response()->json([
             'message' => 'Exam deleted successfully'
         ]);
+    }
+
+    public function regForExam()
+    {
+        $exam = request()->examId;
+
+        if (!$exam) {
+            return response()->json([
+                'message' => 'Exam ID is required'
+            ], 400);
+        }
+
+        // Proceed with registration logic
+        $registration = StudentExam::create([
+            'index_number' => $this->genIndexNumber('EXAM'),
+            'student_id' => Auth::id(),
+            'exam_id' => $exam,
+            'payment_id' => null,
+        ]);
+
+        $registration->load('exam');
+
+        $paymentController = new PaymentController();
+        $payhere_form_data = $paymentController->initiatePayment($registration->id, $registration->exam->price, [
+            'first_name' => explode(' ', trim(Auth::user()->name))[0],
+            'last_name' => explode(' ', trim(Auth::user()->name))[1] ?? '',
+            'email' => Auth::user()->email,
+            'phone' => Auth::user()->phone,
+        ]);
+
+        return response()->json($payhere_form_data);
+    }
+
+    /**
+     * Generate a unique index number for the exam registration.
+     */
+    private function genIndexNumber(string $prefix): string
+    {
+        return $prefix . mt_rand(10000000, 99999999);
     }
 }

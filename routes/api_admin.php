@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SuperAdminController;
+use App\Http\Controllers\Api\OrgAdminController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\OrganizationController;
@@ -27,11 +28,22 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::put('/organizations/{id}', [SuperAdminController::class, 'updateOrganization']);
     Route::delete('/organizations/{id}', [SuperAdminController::class, 'deleteOrganization']);
 
-    // Org Admins Management
+    // Org Admins Management (Super Admin only)
     Route::get('/org-admins', [SuperAdminController::class, 'getOrgAdmins']);
     Route::post('/org-admins', [SuperAdminController::class, 'createOrgAdmin']);
     Route::put('/org-admins/{id}', [SuperAdminController::class, 'updateOrgAdmin']);
     Route::delete('/org-admins/{id}', [SuperAdminController::class, 'deleteOrgAdmin']);
+
+    // Organization Admin Management (Org Admin can manage other admins in their organization)
+    Route::get('/my-org-admins', [OrgAdminController::class, 'getOrgAdmins']);
+    Route::post('/my-org-admins', [OrgAdminController::class, 'createOrgAdmin']);
+    Route::put('/my-org-admins/{id}', [OrgAdminController::class, 'updateOrgAdmin']);
+    Route::delete('/my-org-admins/{id}', [OrgAdminController::class, 'deleteOrgAdmin']);
+
+    // Organization Management (Org Admin can manage their own organization)
+    Route::get('/my-organization', [OrgAdminController::class, 'getMyOrganization']);
+    Route::put('/my-organization', [OrgAdminController::class, 'updateMyOrganization']);
+    Route::post('/my-organization/logo', [OrgAdminController::class, 'uploadOrganizationLogo']);
 
     // Profile maintenance
     Route::get('/profile', [UserController::class, 'user']); // Same as /api/user endpoint
@@ -66,4 +78,5 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::put('/organization/update/{id}', [OrganizationController::class, 'update']);
     Route::delete('/organization/delete/{id}', [OrganizationController::class, 'delete']);
     Route::get('/organization/{id}', [OrganizationController::class, 'show']);
+    Route::post('/organization/{id}/logo', [OrganizationController::class, 'uploadLogo']);
 });

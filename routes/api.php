@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ComplaintController;
+use App\Http\Controllers\Api\ExamController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\AnnouncementController;
@@ -15,6 +17,10 @@ Route::prefix('admin')->group(base_path('routes/api_admin.php'));
 // Public routes
 Route::post('/login', [AuthController::class, 'authenticate']);
 Route::post('/register', [StudentController::class, 'register']);
+Route::get('/exams', [ExamController::class, 'publicIndex']); // Public exam listing for students
+
+Route::post('/payment/notify', [PaymentController::class, 'notify'])->name('payment.notify');  // uses a public URL: https://6c8f55c58cf7.ngrok-free.app/payment/notify
+
 
 // Protected routes (requires authentication)
 Route::middleware('auth:sanctum')->group(function () {
@@ -38,6 +44,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/complaints/{id}', [ComplaintController::class, 'getComplaint']);
     Route::put('/complaints/{id}', [ComplaintController::class, 'updateComplaint']);
     Route::delete('/complaints/{id}', [ComplaintController::class, 'deleteComplaint']);
+
+    // Exam registrations and payments
+    Route::post('/exam/register', [ExamController::class, 'regForExam']);
+
+    // Payment webhook
+    Route::post('/payment/verify', [PaymentController::class, 'verify'])->name('payment.verify');
 
     // manage announcements
     Route::post('/announcements', [AnnouncementController::class, 'store']);

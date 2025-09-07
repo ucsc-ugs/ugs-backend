@@ -30,9 +30,10 @@ return new class extends Migration
         Schema::create('student_exams', function (Blueprint $table) {
             $table->id();
             $table->string('index_number')->unique();
-            $table->foreignId('student_id')->constrained('students')->onDelete('cascade');
+            $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('exam_id')->constrained('exams')->onDelete('cascade');
-            $table->enum('status', ['registered', 'rejected', 'expired'])->default('registered');
+            $table->unsignedBigInteger('payment_id')->nullable();
+            $table->enum('status', ['registered', 'rejected', 'expired', 'pending'])->default('pending');
             $table->boolean('attended')->default(false);
             $table->string('result')->nullable();
             $table->timestamps();

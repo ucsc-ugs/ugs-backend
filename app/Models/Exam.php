@@ -12,13 +12,13 @@ class Exam extends Model
     protected $fillable = [
         'name',
         'description',
+        'price',
         'organization_id',
     ];
 
-    // protected $casts = [
-    //     'starts_at' => 'datetime',
-    //     'ends_at' => 'datetime',
-    // ];
+    protected $casts = [
+        'price' => 'float',
+    ];
 
     //An exam belongs to an organization
     public function organization()
