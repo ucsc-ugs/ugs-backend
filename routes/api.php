@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ComplaintController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\AnnouncementController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -17,7 +18,7 @@ Route::post('/register', [StudentController::class, 'register']);
 
 // Protected routes (requires authentication)
 Route::middleware('auth:sanctum')->group(function () {
-    
+
     Route::get('/user', [UserController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
 });
@@ -37,6 +38,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/complaints/{id}', [ComplaintController::class, 'getComplaint']);
     Route::put('/complaints/{id}', [ComplaintController::class, 'updateComplaint']);
     Route::delete('/complaints/{id}', [ComplaintController::class, 'deleteComplaint']);
+
+    // manage announcements
+    Route::post('/announcements', [AnnouncementController::class, 'store']);
+    Route::get('/announcements', [AnnouncementController::class, 'index']);
+    Route::put('/announcements/{id}', [AnnouncementController::class, 'update']);
+    Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy']);
 });
 
 // Email verification routes
@@ -62,3 +69,6 @@ Route::post('/email/verification-notification', function (Request $request) {
 
     return back()->with('message', 'Verification link sent!');
 })->middleware(['auth:sanctum', 'throttle:6,1'])->name('verification.send');
+
+// Add this outside any middleware group: (announcements should be public???)
+Route::get('/announcements', [AnnouncementController::class, 'index']);
