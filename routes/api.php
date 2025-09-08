@@ -49,6 +49,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Payment webhook
     Route::post('/payment/verify', [PaymentController::class, 'verify'])->name('payment.verify');
+
+    Route::get('/my-exams', [UserController::class, 'myExams']);
 });
 
 // Email verification routes
@@ -74,3 +76,5 @@ Route::post('/email/verification-notification', function (Request $request) {
 
     return back()->with('message', 'Verification link sent!');
 })->middleware(['auth:sanctum', 'throttle:6,1'])->name('verification.send');
+
+
