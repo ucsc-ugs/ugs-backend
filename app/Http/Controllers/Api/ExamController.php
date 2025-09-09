@@ -282,7 +282,7 @@ class ExamController extends Controller
             $year = date('y'); // last two digits of year
             $month = date('m'); // two digit month
             $count = StudentExam::whereHas('exam', function($query) use ($exam_name) {
-                $query->where('name', $exam_name);
+                $query->where('code_name', $exam_name);
             })->count() + 1;
             $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
             $suffix = $year . $month . $sequence;
@@ -294,7 +294,7 @@ class ExamController extends Controller
             $year = date('y'); // last two digits of year
             $month = date('m'); // two digit month
             $count = StudentExam::whereHas('exam', function($query) use ($exam_name) {
-                $query->where('name', $exam_name);
+                $query->where('code_name', $exam_name);
             })->count() + 1;
             $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
             $suffix = $year . $month . $sequence;
@@ -304,7 +304,7 @@ class ExamController extends Controller
         {
             $prefix = 'ET('.$exam_name.')';
             $count = StudentExam::whereHas('exam', function($query) use ($exam_name) {
-                $query->where('name', $exam_name);
+                $query->where('code_name', $exam_name);
             })->count() + 1;
             $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
             $suffix = $sequence;
