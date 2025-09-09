@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\AnnouncementController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -51,6 +52,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Payment webhook
     Route::post('/payment/verify', [PaymentController::class, 'verify'])->name('payment.verify');
 
+    // manage announcements
+    Route::post('/announcements', [AnnouncementController::class, 'store']);
+    Route::get('/announcements', [AnnouncementController::class, 'index']);
+    Route::put('/announcements/{id}', [AnnouncementController::class, 'update']);
+    Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy']);
     Route::get('/my-exams', [UserController::class, 'myExams']);
 });
 
@@ -78,4 +84,6 @@ Route::post('/email/verification-notification', function (Request $request) {
     return back()->with('message', 'Verification link sent!');
 })->middleware(['auth:sanctum', 'throttle:6,1'])->name('verification.send');
 
+// Add this outside any middleware group: (announcements should be public???)
+Route::get('/announcements', [AnnouncementController::class, 'index']);
 
