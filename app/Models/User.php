@@ -83,4 +83,11 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->student()->exists();
     }
+
+    public function exams()
+    {   
+        return $this->belongsToMany(Exam::class, 'student_exams', 'student_id', 'exam_id')
+                    ->withPivot('payment_id', 'status', 'attended', 'result')
+                    ->withTimestamps();
+    }
 }

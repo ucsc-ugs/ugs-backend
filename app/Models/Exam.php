@@ -43,4 +43,16 @@ class Exam extends Model
     {
         return $this->hasMany(StudentExam::class);
     }
+
+    public function students()
+    {
+        return $this->hasMany(StudentExam::class);
+    }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'student_exams', 'exam_id', 'student_id')
+                    ->withPivot('payment_id', 'status', 'attended', 'result')
+                    ->withTimestamps();
+    }
 }

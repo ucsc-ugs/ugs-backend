@@ -18,7 +18,7 @@ class StudentExam extends Model
 
     public function student()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Student::class);
     }
 
     public function exam()

@@ -56,6 +56,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/announcements', [AnnouncementController::class, 'index']);
     Route::put('/announcements/{id}', [AnnouncementController::class, 'update']);
     Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy']);
+    Route::get('/my-exams', [UserController::class, 'myExams']);
 });
 
 // Email verification routes
@@ -84,3 +85,4 @@ Route::post('/email/verification-notification', function (Request $request) {
 
 // Add this outside any middleware group: (announcements should be public???)
 Route::get('/announcements', [AnnouncementController::class, 'index']);
+
