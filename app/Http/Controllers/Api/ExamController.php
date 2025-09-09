@@ -138,9 +138,10 @@ class ExamController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(string $code_name): JsonResponse
     {
-        $exam = Exam::with(['organization', 'examDates'])->find($id);
+        $code_name = strtoupper($code_name);
+        $exam = Exam::with(['organization', 'examDates'])->where('code_name', $code_name)->first();
 
         if (!$exam) {
             return response()->json([
@@ -233,19 +234,27 @@ class ExamController extends Controller
 
     public function regForExam()
     {
-        $exam = request()->examId;
+        $exam_id = request()->examId;
 
-        if (!$exam) {
+        if (!$exam_id) {
             return response()->json([
                 'message' => 'Exam ID is required'
             ], 400);
         }
 
+        $exam = Exam::find($exam_id);
+        if (!$exam) {
+            return response()->json([
+                'message' => 'Exam not found'
+            ], 404);
+        }
+        $exam_name = $exam->code_name;
+
         // Proceed with registration logic
         $registration = StudentExam::create([
-            'index_number' => $this->genIndexNumber('EXAM'),
+            'index_number' => $this->genIndexNumber($exam_name),
             'student_id' => Auth::id(),
-            'exam_id' => $exam,
+            'exam_id' => $exam_id,
             'payment_id' => null,
         ]);
 
@@ -265,8 +274,41 @@ class ExamController extends Controller
     /**
      * Generate a unique index number for the exam registration.
      */
-    private function genIndexNumber(string $prefix): string
+    private function genIndexNumber(string $exam_name): string
     {
-        return $prefix . mt_rand(10000000, 99999999);
+        if ($exam_name === 'GCCT')
+        {
+            $prefix = 'GCC';
+            $year = date('y'); // last two digits of year
+            $month = date('m'); // two digit month
+            $count = StudentExam::whereHas('exam', function($query) use ($exam_name) {
+                $query->where('code_name', $exam_name);
+            })->count() + 1;
+            $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
+            $suffix = $year . $month . $sequence;
+            return $prefix . $suffix;
+        }
+        else if ($exam_name === 'GCAT')
+        {
+            $prefix = 'GCT';
+            $year = date('y'); // last two digits of year
+            $month = date('m'); // two digit month
+            $count = StudentExam::whereHas('exam', function($query) use ($exam_name) {
+                $query->where('code_name', $exam_name);
+            })->count() + 1;
+            $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
+            $suffix = $year . $month . $sequence;
+            return $prefix . $suffix;
+        }
+        else
+        {
+            $prefix = 'ET('.$exam_name.')';
+            $count = StudentExam::whereHas('exam', function($query) use ($exam_name) {
+                $query->where('code_name', $exam_name);
+            })->count() + 1;
+            $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
+            $suffix = $sequence;
+            return $prefix . $suffix;
+        }
     }
 }

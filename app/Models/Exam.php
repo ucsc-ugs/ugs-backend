@@ -11,6 +11,7 @@ class Exam extends Model
 
     protected $fillable = [
         'name',
+        'code_name',
         'description',
         'price',
         'organization_id',
@@ -31,8 +32,6 @@ class Exam extends Model
     {
         return $this->hasMany(ExamDate::class);
     }
-
-
 
     public function dates()
     {
