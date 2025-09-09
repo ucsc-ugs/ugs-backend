@@ -26,10 +26,7 @@ return new class extends Migration
             $table->enum('category', ['general', 'exam', 'academic', 'administrative', 'emergency']);
             $table->json('tags')->nullable();
             $table->boolean('is_pinned')->default(false);
-            $table->boolean('notifications_enabled')->default(true);
-            $table->boolean('email_notifications_enabled')->default(true);
-            $table->boolean('sms_notifications_enabled')->default(false);
-            $table->boolean('push_notifications_enabled')->default(true);
+            // Notification settings columns removed
             $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
         });

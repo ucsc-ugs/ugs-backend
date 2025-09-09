@@ -21,7 +21,7 @@ class AnnouncementController extends Controller
                 'message' => 'required|string',
                 'audience' => 'required|in:all,exam-specific,department-specific,year-specific',
                 'exam_id' => 'nullable|integer',
-                'department_id' => 'nullable|integer',
+                // department_id removed
                 'year_level' => 'nullable|string',
                 'expiry_date' => 'required|date',
                 'publish_date' => 'nullable|date',
@@ -30,10 +30,6 @@ class AnnouncementController extends Controller
                 'category' => 'required|in:general,exam,academic,administrative,emergency',
                 'tags' => 'nullable|array',
                 'is_pinned' => 'required|boolean',
-                'notifications_enabled' => 'required|boolean',
-                'email_notifications_enabled' => 'required|boolean',
-                'sms_notifications_enabled' => 'required|boolean',
-                'push_notifications_enabled' => 'required|boolean',
                 'created_by' => 'nullable|integer',
             ]);
 
@@ -61,7 +57,7 @@ class AnnouncementController extends Controller
             'message' => 'required|string',
             'audience' => 'required|string',
             'exam_id' => 'nullable',
-            'department_id' => 'nullable',
+            // department_id removed
             'year_level' => 'nullable',
             'expiry_date' => 'required|date',
             'publish_date' => 'nullable|date',
@@ -70,10 +66,6 @@ class AnnouncementController extends Controller
             'category' => 'required|string',
             'tags' => 'nullable|array',
             'is_pinned' => 'boolean',
-            'notifications_enabled' => 'boolean',
-            'email_notifications_enabled' => 'boolean',
-            'sms_notifications_enabled' => 'boolean',
-            'push_notifications_enabled' => 'boolean',
             'created_by' => 'nullable|integer',
         ]);
 

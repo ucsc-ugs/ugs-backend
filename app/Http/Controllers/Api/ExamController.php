@@ -49,15 +49,14 @@ class ExamController extends Controller
         }
         // Org admin can only see exams related to their organization
         elseif ($user->hasRole('org_admin')) {
-            // Get organization through org_admins relationship
-            $orgAdmin = $user->orgAdmin; // Assuming User has orgAdmin relationship
-            if (!$orgAdmin) {
+            // Get organization_id directly from user
+            if (!$user->organization_id) {
                 return response()->json([
-                    'message' => 'No organization found for this admin'
+                    'message' => 'No organization found for this user'
                 ], 404);
             }
             $exams = Exam::with(['organization', 'examDates'])
-                ->where('organization_id', $orgAdmin->organization_id)
+                ->where('organization_id', $user->organization_id)
                 ->get();
         }
 
@@ -276,34 +275,29 @@ class ExamController extends Controller
      */
     private function genIndexNumber(string $exam_name): string
     {
-        if ($exam_name === 'GCCT')
-        {
+        if ($exam_name === 'GCCT') {
             $prefix = 'GCC';
             $year = date('y'); // last two digits of year
             $month = date('m'); // two digit month
-            $count = StudentExam::whereHas('exam', function($query) use ($exam_name) {
+            $count = StudentExam::whereHas('exam', function ($query) use ($exam_name) {
                 $query->where('code_name', $exam_name);
             })->count() + 1;
             $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
             $suffix = $year . $month . $sequence;
             return $prefix . $suffix;
-        }
-        else if ($exam_name === 'GCAT')
-        {
+        } else if ($exam_name === 'GCAT') {
             $prefix = 'GCT';
             $year = date('y'); // last two digits of year
             $month = date('m'); // two digit month
-            $count = StudentExam::whereHas('exam', function($query) use ($exam_name) {
+            $count = StudentExam::whereHas('exam', function ($query) use ($exam_name) {
                 $query->where('code_name', $exam_name);
             })->count() + 1;
             $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
             $suffix = $year . $month . $sequence;
             return $prefix . $suffix;
-        }
-        else
-        {
-            $prefix = 'ET('.$exam_name.')';
-            $count = StudentExam::whereHas('exam', function($query) use ($exam_name) {
+        } else {
+            $prefix = 'ET(' . $exam_name . ')';
+            $count = StudentExam::whereHas('exam', function ($query) use ($exam_name) {
                 $query->where('code_name', $exam_name);
             })->count() + 1;
             $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);

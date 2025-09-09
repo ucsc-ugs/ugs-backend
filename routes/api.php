@@ -57,6 +57,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/announcements', [AnnouncementController::class, 'index']);
     Route::put('/announcements/{id}', [AnnouncementController::class, 'update']);
     Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy']);
+
+    
     Route::get('/my-exams', [UserController::class, 'myExams']);
 });
 
