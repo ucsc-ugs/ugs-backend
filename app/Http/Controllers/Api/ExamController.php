@@ -138,9 +138,10 @@ class ExamController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(string $code_name): JsonResponse
     {
-        $exam = Exam::with(['organization', 'examDates'])->find($id);
+        $code_name = strtoupper($code_name);
+        $exam = Exam::with(['organization', 'examDates'])->where('code_name', $code_name)->first();
 
         if (!$exam) {
             return response()->json([
@@ -247,7 +248,7 @@ class ExamController extends Controller
                 'message' => 'Exam not found'
             ], 404);
         }
-        $exam_name = $exam->name;
+        $exam_name = $exam->code_name;
 
         // Proceed with registration logic
         $registration = StudentExam::create([
