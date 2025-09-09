@@ -24,7 +24,15 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'student_id',
+        'organization_id',
     ];
+    /**
+     * Get the organization that the user belongs to.
+     */
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class);
+    }
 
     /**
      * The attributes that should be hidden for serialization.
@@ -85,11 +93,13 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     public function exams()
-    {   
+    {
         return $this->belongsToMany(Exam::class, 'student_exams', 'student_id', 'exam_id')
+
 
                     ->withPivot('payment_id', 'status', 'attended', 'result', 'index_number','date')
 
                     ->withTimestamps();
+
     }
 }
