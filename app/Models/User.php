@@ -87,7 +87,7 @@ class User extends Authenticatable implements MustVerifyEmail
     public function exams()
     {   
         return $this->belongsToMany(Exam::class, 'student_exams', 'student_id', 'exam_id')
-                    ->withPivot('payment_id', 'status', 'attended', 'result')
+                    ->withPivot('payment_id', 'status', 'attended', 'result','date')
                     ->withTimestamps();
     }
 }
