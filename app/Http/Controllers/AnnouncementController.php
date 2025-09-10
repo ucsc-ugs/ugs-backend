@@ -19,10 +19,9 @@ class AnnouncementController extends Controller
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
                 'message' => 'required|string',
-                'audience' => 'required|in:all,exam-specific,department-specific,year-specific',
+                'audience' => 'required|in:all,exam-specific',
                 'exam_id' => 'nullable|integer',
-                // department_id removed
-                'year_level' => 'nullable|string',
+                // department_id and year_level removed
                 'expiry_date' => 'required|date',
                 'publish_date' => 'nullable|date',
                 'status' => 'required|in:published,draft,scheduled',
@@ -55,10 +54,9 @@ class AnnouncementController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'message' => 'required|string',
-            'audience' => 'required|string',
+            'audience' => 'required|in:all,exam-specific',
             'exam_id' => 'nullable',
-            // department_id removed
-            'year_level' => 'nullable',
+            // department_id and year_level removed
             'expiry_date' => 'required|date',
             'publish_date' => 'nullable|date',
             'status' => 'required|string',
