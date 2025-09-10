@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\StudentAdminController;
 use Illuminate\Http\Request;
 
 
@@ -79,4 +80,11 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::delete('/organization/delete/{id}', [OrganizationController::class, 'delete']);
     Route::get('/organization/{id}', [OrganizationController::class, 'show']);
     Route::post('/organization/{id}/logo', [OrganizationController::class, 'uploadLogo']);
+
+    // Student management (Org Admin / Super Admin)
+    Route::get('/students', [StudentAdminController::class, 'index']);
+    Route::post('/students', [StudentAdminController::class, 'store']);
+    Route::get('/students/{id}', [StudentAdminController::class, 'show']);
+    Route::put('/students/{id}', [StudentAdminController::class, 'update']);
+    Route::delete('/students/{id}', [StudentAdminController::class, 'destroy']);
 });
