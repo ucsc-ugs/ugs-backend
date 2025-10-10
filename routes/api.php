@@ -3,8 +3,10 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ComplaintController;
 use App\Http\Controllers\Api\ExamController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\AnnouncementController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -16,6 +18,10 @@ Route::prefix('admin')->group(base_path('routes/api_admin.php'));
 Route::post('/login', [AuthController::class, 'authenticate']);
 Route::post('/register', [StudentController::class, 'register']);
 Route::get('/exams', [ExamController::class, 'publicIndex']); // Public exam listing for students
+Route::get('/exams/{code_name}', [ExamController::class, 'show']); // Public exam details for students
+
+Route::post('/payment/notify', [PaymentController::class, 'notify'])->name('payment.notify');  // uses a public URL: https://6c8f55c58cf7.ngrok-free.app/payment/notify
+
 
 // Protected routes (requires authentication)
 Route::middleware('auth:sanctum')->group(function () {
@@ -39,6 +45,21 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/complaints/{id}', [ComplaintController::class, 'getComplaint']);
     Route::put('/complaints/{id}', [ComplaintController::class, 'updateComplaint']);
     Route::delete('/complaints/{id}', [ComplaintController::class, 'deleteComplaint']);
+
+    // Exam registrations and payments
+    Route::post('/exam/register', [ExamController::class, 'regForExam']);
+
+    // Payment webhook
+    Route::post('/payment/verify', [PaymentController::class, 'verify'])->name('payment.verify');
+
+    // manage announcements
+    Route::post('/announcements', [AnnouncementController::class, 'store']);
+    Route::get('/announcements', [AnnouncementController::class, 'index']);
+    Route::put('/announcements/{id}', [AnnouncementController::class, 'update']);
+    Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy']);
+
+    
+    Route::get('/my-exams', [UserController::class, 'myExams']);
 });
 
 // Email verification routes
@@ -64,3 +85,7 @@ Route::post('/email/verification-notification', function (Request $request) {
 
     return back()->with('message', 'Verification link sent!');
 })->middleware(['auth:sanctum', 'throttle:6,1'])->name('verification.send');
+
+// Add this outside any middleware group: (announcements should be public???)
+Route::get('/announcements', [AnnouncementController::class, 'index']);
+

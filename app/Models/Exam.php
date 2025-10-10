@@ -11,6 +11,7 @@ class Exam extends Model
 
     protected $fillable = [
         'name',
+        'code_name',
         'description',
         'price',
         'organization_id',
@@ -34,8 +35,6 @@ class Exam extends Model
         return $this->hasMany(ExamDate::class);
     }
 
-
-
     public function dates()
     {
         return $this->hasMany(ExamDate::class);
@@ -44,5 +43,17 @@ class Exam extends Model
     public function studentExams()
     {
         return $this->hasMany(StudentExam::class);
+    }
+
+    public function students()
+    {
+        return $this->hasMany(StudentExam::class);
+    }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'student_exams', 'exam_id', 'student_id')
+                    ->withPivot('payment_id', 'status', 'attended', 'result')
+                    ->withTimestamps();
     }
 }

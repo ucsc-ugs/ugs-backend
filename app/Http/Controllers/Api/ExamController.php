@@ -5,8 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamDate;
+use App\Models\StudentExam;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Laravel\Pail\ValueObjects\Origin\Console;
 
 class ExamController extends Controller
 {
@@ -45,15 +49,14 @@ class ExamController extends Controller
         }
         // Org admin can only see exams related to their organization
         elseif ($user->hasRole('org_admin')) {
-            // Get organization through org_admins relationship
-            $orgAdmin = $user->orgAdmin; // Assuming User has orgAdmin relationship
-            if (!$orgAdmin) {
+            // Get organization_id directly from user
+            if (!$user->organization_id) {
                 return response()->json([
-                    'message' => 'No organization found for this admin'
+                    'message' => 'No organization found for this user'
                 ], 404);
             }
             $exams = Exam::with(['organization', 'examDates'])
-                ->where('organization_id', $orgAdmin->organization_id)
+                ->where('organization_id', $user->organization_id)
                 ->get();
         }
 
@@ -136,9 +139,10 @@ class ExamController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(string $code_name): JsonResponse
     {
-        $exam = Exam::with(['organization', 'examDates'])->find($id);
+        $code_name = strtoupper($code_name);
+        $exam = Exam::with(['organization', 'examDates'])->where('code_name', $code_name)->first();
 
         if (!$exam) {
             return response()->json([
@@ -229,5 +233,80 @@ class ExamController extends Controller
         return response()->json([
             'message' => 'Exam deleted successfully'
         ]);
+    }
+
+    public function regForExam()
+    {
+        $exam_id = request()->examId;
+
+        if (!$exam_id) {
+            return response()->json([
+                'message' => 'Exam ID is required'
+            ], 400);
+        }
+
+        $exam = Exam::find($exam_id);
+        if (!$exam) {
+            return response()->json([
+                'message' => 'Exam not found'
+            ], 404);
+        }
+        $exam_name = $exam->code_name;
+
+        // Proceed with registration logic
+        $registration = StudentExam::create([
+            'index_number' => $this->genIndexNumber($exam_name),
+            'student_id' => Auth::id(),
+            'exam_id' => $exam_id,
+            'payment_id' => null,
+        ]);
+
+        $registration->load('exam');
+
+        $paymentController = new PaymentController();
+        $payhere_form_data = $paymentController->initiatePayment($registration->id, $registration->exam->price, [
+            'first_name' => explode(' ', trim(Auth::user()->name))[0],
+            'last_name' => explode(' ', trim(Auth::user()->name))[1] ?? '',
+            'email' => Auth::user()->email,
+            'phone' => Auth::user()->phone,
+        ]);
+
+        return response()->json($payhere_form_data);
+    }
+
+    /**
+     * Generate a unique index number for the exam registration.
+     */
+    private function genIndexNumber(string $exam_name): string
+    {
+        if ($exam_name === 'GCCT') {
+            $prefix = 'GCC';
+            $year = date('y'); // last two digits of year
+            $month = date('m'); // two digit month
+            $count = StudentExam::whereHas('exam', function ($query) use ($exam_name) {
+                $query->where('code_name', $exam_name);
+            })->count() + 1;
+            $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
+            $suffix = $year . $month . $sequence;
+            return $prefix . $suffix;
+        } else if ($exam_name === 'GCAT') {
+            $prefix = 'GCT';
+            $year = date('y'); // last two digits of year
+            $month = date('m'); // two digit month
+            $count = StudentExam::whereHas('exam', function ($query) use ($exam_name) {
+                $query->where('code_name', $exam_name);
+            })->count() + 1;
+            $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
+            $suffix = $year . $month . $sequence;
+            return $prefix . $suffix;
+        } else {
+            $prefix = 'ET(' . $exam_name . ')';
+            $count = StudentExam::whereHas('exam', function ($query) use ($exam_name) {
+                $query->where('code_name', $exam_name);
+            })->count() + 1;
+            $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
+            $suffix = $sequence;
+            return $prefix . $suffix;
+        }
     }
 }

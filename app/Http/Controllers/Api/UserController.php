@@ -72,4 +72,13 @@ class UserController extends Controller
     /**
      * Profile soft delete should be implemented.
      */
+
+    public function myExams()
+    {
+        $user = Auth::user();
+
+        $exams = $user->exams()->get();
+
+        return response()->json($exams);
+    }
 }
