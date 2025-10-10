@@ -14,10 +14,12 @@ class Exam extends Model
         'description',
         'price',
         'organization_id',
+        'registration_deadline',
     ];
 
     protected $casts = [
         'price' => 'float',
+        'registration_deadline' => 'datetime',
     ];
 
     //An exam belongs to an organization

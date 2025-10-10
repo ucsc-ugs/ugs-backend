@@ -82,6 +82,7 @@ class ExamController extends Controller
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'organization_id' => 'required|exists:organizations,id',
+            'registration_deadline' => 'nullable|date',
             'exam_dates' => 'nullable|array',
             'exam_dates.*.date' => 'required|date_format:Y-m-d\TH:i',
             'exam_dates.*.location' => 'nullable|string|max:255'
@@ -108,7 +109,8 @@ class ExamController extends Controller
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'price' => $validated['price'],
-            'organization_id' => $validated['organization_id']
+            'organization_id' => $validated['organization_id'],
+            'registration_deadline' => $validated['registration_deadline'] ?? null
         ]);
 
         // Create exam dates if provided
@@ -168,6 +170,7 @@ class ExamController extends Controller
             'description' => 'nullable|string',
             'price' => 'sometimes|numeric|min:0',
             'organization_id' => 'sometimes|exists:organizations,id',
+            'registration_deadline' => 'nullable|date',
             'exam_dates' => 'nullable|array',
             'exam_dates.*.date' => 'required|date_format:Y-m-d\TH:i',
             'exam_dates.*.location' => 'nullable|string|max:255'
@@ -178,7 +181,8 @@ class ExamController extends Controller
             'name' => $validated['name'] ?? $exam->name,
             'description' => $validated['description'] ?? $exam->description,
             'price' => $validated['price'] ?? $exam->price,
-            'organization_id' => $validated['organization_id'] ?? $exam->organization_id
+            'organization_id' => $validated['organization_id'] ?? $exam->organization_id,
+            'registration_deadline' => $validated['registration_deadline'] ?? $exam->registration_deadline
         ]);
 
         // Update exam dates if provided
