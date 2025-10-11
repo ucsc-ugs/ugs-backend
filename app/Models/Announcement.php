@@ -11,8 +11,6 @@ class Announcement extends Model
         'message',
         'audience',
         'exam_id',
-        // department_id removed
-        'year_level',
         'expiry_date',
         'publish_date',
         'status',

@@ -15,8 +15,8 @@ class Student extends Model
     ];
 
     // Override the primary key behavior since we're using it as a foreign key
-    public $incrementing = false;
-    protected $keyType = 'int';
+    // public $incrementing = false;
+    // protected $keyType = 'int';
 
     public function user()
     {

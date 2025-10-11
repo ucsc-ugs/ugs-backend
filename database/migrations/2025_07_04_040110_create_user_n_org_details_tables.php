@@ -16,9 +16,6 @@ return new class extends Migration
             $table->string('name')->unique();
             $table->text('description')->nullable();
             $table->timestamps();
-
-            // Make the id a foreign key to users.id
-            $table->foreign('id')->references('id')->on('users')->onDelete('cascade');
         });
 
         Schema::create('org_admins', function (Blueprint $table) {

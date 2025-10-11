@@ -12,13 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('announcements', function (Blueprint $table) {
-            $table->dropColumn([
-                'notifications_enabled',
-                'email_notifications_enabled',
-                'sms_notifications_enabled',
-                'push_notifications_enabled'
-            ]);
+            $table->boolean('notifications_enabled')->default(true);
+            $table->boolean('email_notifications_enabled')->default(true);
+            $table->boolean('sms_notifications_enabled')->default(false);
+            $table->boolean('push_notifications_enabled')->default(true);
         });
+        
     }
 
     /**
@@ -27,10 +26,12 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('announcements', function (Blueprint $table) {
-            $table->boolean('notifications_enabled')->default(true);
-            $table->boolean('email_notifications_enabled')->default(true);
-            $table->boolean('sms_notifications_enabled')->default(false);
-            $table->boolean('push_notifications_enabled')->default(true);
+            $table->dropColumn([
+                'notifications_enabled',
+                'email_notifications_enabled',
+                'sms_notifications_enabled',
+                'push_notifications_enabled'
+            ]);
         });
     }
 };

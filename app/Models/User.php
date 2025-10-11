@@ -25,6 +25,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'student_id',
         'organization_id',
+        'user_type',
     ];
     /**
      * Get the organization that the user belongs to.
