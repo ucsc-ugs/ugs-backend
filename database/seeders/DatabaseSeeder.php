@@ -38,9 +38,10 @@ class DatabaseSeeder extends Seeder
 
         // Create admin user
         $adminUser = User::factory()->create([
-            'name' => 'Admin User',
+            'name' => 'Super Admin User',
             'email' => 'admin@example.com',
-            'student_id' => null
+            'student_id' => null,
+            'user_type' => 'super-admin'
         ]);
         $adminUser->assignRole('super_admin');
 
@@ -48,7 +49,8 @@ class DatabaseSeeder extends Seeder
         $orgAdminUser = User::factory()->create([
             'name' => 'Organization Admin',
             'email' => 'orgadmin@example.com',
-            'student_id' => null
+            'student_id' => null,
+            'user_type' => 'org-admin'
         ]);
         $orgAdminUser->assignRole('org_admin');
 

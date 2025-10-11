@@ -35,6 +35,7 @@ class StudentController extends Controller
                 'email' => $validated['email'],
                 'password' => bcrypt($validated['password']),
                 'student_id' => $student->id,
+                'user_type' => 'student',
             ]);
 
             // Load the student relationship
