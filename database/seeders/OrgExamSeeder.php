@@ -2,10 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Complaint;
 use App\Models\Exam;
 use App\Models\Organization;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class OrgExamSeeder extends Seeder
@@ -15,13 +13,6 @@ class OrgExamSeeder extends Seeder
      */
     public function run(): void
     {
-        Organization::factory()->create([
-            'name' => 'University of Colombo School of Computing',
-            'description' => 'UCSC offers 5 Undergraduate degree programmes, 6 Masters degree programmes, 2 Research degree programmes and 1 External degree programme, plus a talented team of staff to help find what is right for you. Whatever your passion, we will put you on the path to success.',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
         Exam::factory()->create([
             'name' => 'Sample Exam 1',
             'code_name' => 'ET01',

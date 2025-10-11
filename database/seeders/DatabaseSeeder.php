@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Organization;
 use App\Models\Student;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -14,6 +15,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Seeding the organization
+        Organization::factory()->create([
+            'name' => 'University of Colombo School of Computing',
+            'description' => 'UCSC offers 5 Undergraduate degree programmes, 6 Masters degree programmes, 2 Research degree programmes and 1 External degree programme, plus a talented team of staff to help find what is right for you. Whatever your passion, we will put you on the path to success.',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         // First, seed the roles
         $this->call([
             RoleSeeder::class,
@@ -50,7 +59,8 @@ class DatabaseSeeder extends Seeder
             'name' => 'Organization Admin',
             'email' => 'orgadmin@example.com',
             'student_id' => null,
-            'user_type' => 'org-admin'
+            'user_type' => 'org-admin',
+            'organization_id' => Organization::where('name', 'University of Colombo School of Computing')->first()->id
         ]);
         $orgAdminUser->assignRole('org_admin');
 
