@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\SuperAdminController;
 use App\Http\Controllers\Api\OrgAdminController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ExamController;
+use App\Http\Controllers\Api\ExamDateController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
@@ -58,6 +59,10 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::put('/exam/update/{id}', [ExamController::class, 'update']);
     Route::delete('/exam/delete/{id}', [ExamController::class, 'delete']);
     Route::get('/exam/{id}', [ExamController::class, 'show']);
+
+    // Exam Date routes
+    Route::patch('/exam-date/{id}/status', [ExamDateController::class, 'updateStatus']);
+    Route::post('/exam-dates/update-expired-statuses', [ExamDateController::class, 'updateExpiredStatuses']);
 
     // Debug route to test user context
     Route::get('/debug/user-context', function (Request $request) {

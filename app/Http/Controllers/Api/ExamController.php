@@ -36,6 +36,7 @@ class ExamController extends Controller
     {
         // Check if user has required roles
         $user = $request->user();
+        $user->load('orgAdmin'); // Load the orgAdmin relationship
 
         if (!$user->hasAnyRole(['super_admin', 'org_admin'])) {
             return response()->json([
@@ -49,14 +50,17 @@ class ExamController extends Controller
         }
         // Org admin can only see exams related to their organization
         elseif ($user->hasRole('org_admin')) {
-            // Get organization_id directly from user
-            if (!$user->organization_id) {
+            // Get organization_id from user's organization_id or orgAdmin relationship
+            $organizationId = $user->organization_id ?? $user->orgAdmin?->organization_id;
+
+            if (!$organizationId) {
                 return response()->json([
                     'message' => 'No organization found for this user'
                 ], 404);
             }
+
             $exams = Exam::with(['organization', 'examDates'])
-                ->where('organization_id', $user->organization_id)
+                ->where('organization_id', $organizationId)
                 ->get();
         }
 
@@ -82,6 +86,7 @@ class ExamController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'code_name' => 'required|string|max:50|unique:exams,code_name',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'organization_id' => 'required|exists:organizations,id',
@@ -110,6 +115,7 @@ class ExamController extends Controller
         // Create the exam
         $exam = Exam::create([
             'name' => $validated['name'],
+            'code_name' => strtoupper($validated['code_name']),
             'description' => $validated['description'] ?? null,
             'price' => $validated['price'],
             'organization_id' => $validated['organization_id'],
@@ -171,6 +177,7 @@ class ExamController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
+            'code_name' => 'sometimes|string|max:50|unique:exams,code_name,' . $id,
             'description' => 'nullable|string',
             'price' => 'sometimes|numeric|min:0',
             'organization_id' => 'sometimes|exists:organizations,id',
@@ -183,6 +190,7 @@ class ExamController extends Controller
         // Update exam basic info
         $exam->update([
             'name' => $validated['name'] ?? $exam->name,
+            'code_name' => isset($validated['code_name']) ? strtoupper($validated['code_name']) : $exam->code_name,
             'description' => $validated['description'] ?? $exam->description,
             'price' => $validated['price'] ?? $exam->price,
             'organization_id' => $validated['organization_id'] ?? $exam->organization_id,

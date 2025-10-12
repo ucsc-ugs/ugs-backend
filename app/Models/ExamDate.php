@@ -9,7 +9,12 @@ class ExamDate extends Model
     protected $fillable = [
         'exam_id',
         'date',
-        'location'
+        'location',
+        'status'
+    ];
+
+    protected $casts = [
+        'date' => 'datetime',
     ];
 
     public function exam()

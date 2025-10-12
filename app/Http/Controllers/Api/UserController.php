@@ -10,13 +10,13 @@ use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
-        /**
+    /**
      * Get the authenticated user.
      */
     public function user(Request $request)
     {
         $user = $request->user();
-        $user->load('student');
+        $user->load(['student', 'orgAdmin']);
 
         return UserResource::make($user);
     }
