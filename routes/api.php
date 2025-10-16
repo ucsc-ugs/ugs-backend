@@ -21,6 +21,8 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::get('/students/{id}', [App\Http\Controllers\Api\StudentAdminController::class, 'show']);
     Route::put('/students/{id}', [App\Http\Controllers\Api\StudentAdminController::class, 'update']);
     Route::delete('/students/{id}', [App\Http\Controllers\Api\StudentAdminController::class, 'destroy']);
+    // Finance overview for org admins
+    Route::get('/finance/overview', [App\Http\Controllers\Api\FinanceController::class, 'overview']);
 });
 
 // Public routes
