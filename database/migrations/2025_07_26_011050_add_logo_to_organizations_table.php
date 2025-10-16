@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::table('organizations', function (Blueprint $table) {
             $table->string('logo')->nullable()->after('description');
             $table->string('status')->default('active')->after('logo');
-            $table->foreignId('admin_id')->nullable()->constrained('users')->onDelete('set null')->after('status');
         });
     }
 

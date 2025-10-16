@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
+            $table->enum('user_type', ['student', 'super-admin', 'org-admin', 'admin'])->default('student');
             $table->string('phone')->nullable();
             $table->string('password');
             $table->foreignId('student_id')->nullable()->constrained('students');
