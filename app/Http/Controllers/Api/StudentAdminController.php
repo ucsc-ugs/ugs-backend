@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+// ... existing use statements ...
 use App\Http\Controllers\Controller;
 use App\Http\Resources\StudentResource;
 use App\Models\User;
@@ -12,9 +13,7 @@ use Illuminate\Support\Facades\Log;
 
 class StudentAdminController extends Controller
 {
-    /**
-     * List students (paginated). Org admins see students in their org; super_admin sees all.
-     */
+    // ... existing index() method ...
     public function index(Request $request)
     {
         $user = $request->user();
@@ -22,7 +21,7 @@ class StudentAdminController extends Controller
         $perPage = (int) $request->input('per_page', 10);
 
         $query = User::whereHas('student')
-            ->with(['student', 'organization', 'exams']);
+            ->with(['student', 'organization']);
 
         if (!$isSuper) {
             $orgAdmin = $user->orgAdmin;
@@ -56,15 +55,13 @@ class StudentAdminController extends Controller
         ]);
     }
 
-    /**
-     * Show a single student
-     */
+    // ... existing show() method ...
     public function show(Request $request, $id)
     {
         $user = $request->user();
         $isSuper = $user->isSuperAdmin();
 
-        $studentUser = User::with(['student', 'organization', 'exams'])->findOrFail($id);
+    $studentUser = User::with(['student', 'organization'])->findOrFail($id);
 
         if (!$isSuper) {
             $orgAdmin = $user->orgAdmin;
@@ -80,7 +77,7 @@ class StudentAdminController extends Controller
     }
 
     /**
-     * Create a new student and user
+     * Create a new student and user (CORRECTED LOGIC)
      */
     public function store(Request $request)
     {
@@ -99,19 +96,14 @@ class StudentAdminController extends Controller
         try {
             DB::beginTransaction();
 
-            $student = Student::create([
-                'local' => $data['local'],
-                'passport_nic' => $data['passport_nic']
-            ]);
-
+            // Step 1: Prepare User data
             $userData = [
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => bcrypt($data['password']),
-                'student_id' => $student->id,
             ];
 
-            // if org admin creating, attach to their org
+            // Step 2: Assign organization_id to the User
             if (!$isSuper) {
                 $orgAdmin = $user->orgAdmin;
                 if (!$orgAdmin) {
@@ -124,15 +116,24 @@ class StudentAdminController extends Controller
                 }
             }
 
+            // Step 3: Create the User first
             $newUser = User::create($userData);
             $newUser->assignRole('student');
+
+            // Step 4: Create the Student using the new User's ID
+            $student = Student::create([
+                'id' => $newUser->id, // Use the User's ID as the Student's primary key
+                'local' => $data['local'],
+                'passport_nic' => $data['passport_nic']
+            ]);
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Student created',
-                'data' => new StudentResource($newUser)
+                'data' => new StudentResource($newUser->load('student')) // Eager load the new student data
             ], 201);
+
         } catch (\Exception $e) {
             DB::rollback();
             Log::error('Student creation error: ' . $e->getMessage());
@@ -140,9 +141,8 @@ class StudentAdminController extends Controller
         }
     }
 
-    /**
-     * Update student and user
-     */
+
+    // ... existing update() method ...
     public function update(Request $request, $id)
     {
         $user = $request->user();
@@ -185,7 +185,7 @@ class StudentAdminController extends Controller
 
             DB::commit();
 
-            return response()->json(['message' => 'Student updated', 'data' => new StudentResource($target->fresh()->load(['student','organization','exams']))]);
+            return response()->json(['message' => 'Student updated', 'data' => new StudentResource($target->fresh()->load(['student','organization']))]);
         } catch (\Exception $e) {
             DB::rollback();
             Log::error('Student update error: ' . $e->getMessage());
@@ -193,9 +193,7 @@ class StudentAdminController extends Controller
         }
     }
 
-    /**
-     * Delete student and associated user
-     */
+    // ... existing destroy() method ...
     public function destroy(Request $request, $id)
     {
         $user = $request->user();
@@ -228,3 +226,4 @@ class StudentAdminController extends Controller
         }
     }
 }
+
