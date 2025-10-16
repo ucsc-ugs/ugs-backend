@@ -26,6 +26,7 @@ class StudentResource extends JsonResource
             'contact' => $user->phone_number ?? null,
             'registration' => $user->student->index_number ?? null,
             'nic' => $user->student->passport_nic ?? null,
+            'local' => optional($user->student)->local,
             // Only use exams data if it was eager loaded by the controller. This avoids
             // triggering a lazy load that may rely on pivot columns that don't exist in
             // some developer databases (see migrations mismatch).
@@ -34,6 +35,8 @@ class StudentResource extends JsonResource
             'payment_status' => $user->relationLoaded('exams') ? $this->resolvePaymentStatus($user) : 'unpaid',
             'status' => $user->active ?? 'active',
             'registered_at' => $user->created_at ? $user->created_at->toDateString() : null,
+            // Convenience for UIs expecting created_at
+            'created_at' => $user->created_at ? $user->created_at->toDateString() : null,
         ];
     }
 

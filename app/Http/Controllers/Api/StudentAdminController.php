@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 
 class StudentAdminController extends Controller
@@ -28,7 +30,20 @@ class StudentAdminController extends Controller
             if (!$orgAdmin) {
                 return response()->json(['message' => 'Unauthorized. Organization admin access required.'], 403);
             }
-            $query->where('organization_id', $orgAdmin->organization_id);
+
+            $orgId = $orgAdmin->organization_id;
+
+            // Include students who either belong to the org directly OR have registered for exams of this org
+            $query->where(function ($sub) use ($orgId) {
+                $sub->where('organization_id', $orgId)
+                    ->orWhereExists(function ($q) use ($orgId) {
+                        $q->select(DB::raw(1))
+                            ->from('student_exams')
+                            ->join('exams', 'student_exams.exam_id', '=', 'exams.id')
+                            ->whereColumn('student_exams.student_id', 'users.id')
+                            ->where('exams.organization_id', $orgId);
+                    });
+            });
         }
 
         if ($q = $request->input('q')) {
@@ -65,14 +80,99 @@ class StudentAdminController extends Controller
 
         if (!$isSuper) {
             $orgAdmin = $user->orgAdmin;
-            if (!$orgAdmin || $studentUser->organization_id !== $orgAdmin->organization_id) {
-                return response()->json(['message' => 'Unauthorized. You can only view students from your organization.'], 403);
+            if (!$orgAdmin) {
+                return response()->json(['message' => 'Unauthorized. Organization admin access required.'], 403);
+            }
+
+            $orgId = $orgAdmin->organization_id;
+
+            $belongsToOrg = $studentUser->organization_id === $orgId;
+            if (!$belongsToOrg) {
+                // Check if the student has any registrations for exams of this organization
+                $hasExamInOrg = DB::table('student_exams')
+                    ->join('exams', 'student_exams.exam_id', '=', 'exams.id')
+                    ->where('student_exams.student_id', $studentUser->id)
+                    ->where('exams.organization_id', $orgId)
+                    ->exists();
+
+                if (!$hasExamInOrg) {
+                    return response()->json(['message' => 'Unauthorized. You can only view students registered for your organization\'s exams.'], 403);
+                }
             }
         }
 
+        // Build exam registrations explicitly to avoid relying on potentially missing pivot columns
+        $orgId = !$isSuper ? ($user->orgAdmin->organization_id ?? null) : null;
+        // Resolve column names based on actual schema to avoid missing-column errors
+        $examNameCol = Schema::hasColumn('exams', 'name')
+            ? 'exams.name'
+            : (Schema::hasColumn('exams', 'title') ? 'exams.title' : null);
+        $examCodeCol = Schema::hasColumn('exams', 'code_name')
+            ? 'exams.code_name'
+            : (Schema::hasColumn('exams', 'code') ? 'exams.code' : null);
+        $startCol = Schema::hasColumn('exams', 'start_date')
+            ? 'exams.start_date'
+            : (Schema::hasColumn('exams', 'registration_deadline') ? 'exams.registration_deadline' : null);
+        $endCol = Schema::hasColumn('exams', 'end_date') ? 'exams.end_date' : null;
+
+        $selects = [
+            'exams.id as exam_id',
+            $examNameCol ? DB::raw($examNameCol . ' as exam_name') : DB::raw("'Exam' as exam_name"),
+            $examCodeCol ? DB::raw($examCodeCol . ' as exam_code') : DB::raw('NULL as exam_code'),
+            $startCol ? DB::raw($startCol . ' as start_date') : DB::raw('NULL as start_date'),
+            $endCol ? DB::raw($endCol . ' as end_date') : DB::raw('NULL as end_date'),
+            'student_exams.created_at as registered_at',
+            'student_exams.attended as attended',
+            'student_exams.status as reg_status',
+        ];
+
+        $orderCol = $startCol ? $startCol : 'student_exams.created_at';
+
+        $examRegs = DB::table('student_exams')
+            ->join('exams', 'student_exams.exam_id', '=', 'exams.id')
+            ->when(!$isSuper && $orgId, function ($q) use ($orgId) {
+                $q->where('exams.organization_id', $orgId);
+            })
+            ->where('student_exams.student_id', $studentUser->id)
+            ->select($selects)
+            ->orderBy(DB::raw($orderCol), 'desc')
+            ->get()
+            ->map(function ($row) {
+                $end = $row->end_date ? Carbon::parse($row->end_date) : null;
+                $start = $row->start_date ? Carbon::parse($row->start_date) : null;
+                // Completion heuristic: attended=true OR end_date/start_date in past OR status indicates completion
+                $completed = false;
+                if (!is_null($row->attended)) {
+                    $completed = (bool)$row->attended;
+                } elseif ($end) {
+                    $completed = $end->isPast();
+                } elseif ($start) {
+                    $completed = $start->isPast();
+                }
+                if (!$completed && !empty($row->reg_status)) {
+                    $completed = in_array(strtolower((string)$row->reg_status), ['completed','finished','graded','done','closed']);
+                }
+
+                return [
+                    'id' => $row->exam_id,
+                    'name' => $row->exam_name,
+                    'code' => $row->exam_code,
+                    'exam_date' => $row->start_date,
+                    'end_date' => $row->end_date,
+                    'registered_at' => $row->registered_at,
+                    'completed' => $completed,
+                ];
+            })
+            ->values();
+
+        $resource = new StudentResource($studentUser);
+        $data = array_merge($resource->toArray($request), [
+            'exam_registrations' => $examRegs,
+        ]);
+
         return response()->json([
             'message' => 'Student retrieved',
-            'data' => new StudentResource($studentUser)
+            'data' => $data,
         ]);
     }
 
