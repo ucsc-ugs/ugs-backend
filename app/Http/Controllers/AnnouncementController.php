@@ -4,11 +4,23 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Announcement;
+use Illuminate\Support\Facades\Artisan;
 
 class AnnouncementController extends Controller
 {
     public function index()
     {
+        // Update scheduled announcements whose publish_date has passed
+        $now = now();
+        $scheduled = \App\Models\Announcement::where('status', 'scheduled')
+            ->where('publish_date', '<=', $now)
+            ->get();
+
+        foreach ($scheduled as $announcement) {
+            $announcement->status = 'published';
+            $announcement->save();
+        }
+
         // Return all announcements, no user filter
         return response()->json(\App\Models\Announcement::all());
     }
@@ -33,6 +45,9 @@ class AnnouncementController extends Controller
             ]);
 
             $announcement = Announcement::create($validated);
+
+            // Immediately trigger the scheduled command after creation
+            Artisan::call('announcements:publish-scheduled');
 
             return response()->json($announcement, 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
