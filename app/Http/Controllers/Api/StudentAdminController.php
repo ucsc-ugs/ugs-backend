@@ -33,16 +33,15 @@ class StudentAdminController extends Controller
 
             $orgId = $orgAdmin->organization_id;
 
-            // Include students who either belong to the org directly OR have registered for exams of this org
-            $query->where(function ($sub) use ($orgId) {
-                $sub->where('organization_id', $orgId)
-                    ->orWhereExists(function ($q) use ($orgId) {
-                        $q->select(DB::raw(1))
-                            ->from('student_exams')
-                            ->join('exams', 'student_exams.exam_id', '=', 'exams.id')
-                            ->whereColumn('student_exams.student_id', 'users.id')
-                            ->where('exams.organization_id', $orgId);
-                    });
+            // Only include students who have PAID registrations for exams of this organization
+            $query->whereExists(function ($q) use ($orgId) {
+                $q->select(DB::raw(1))
+                    ->from('student_exams')
+                    ->join('exams', 'student_exams.exam_id', '=', 'exams.id')
+                    ->join('payments', 'payments.student_exam_id', '=', 'student_exams.id')
+                    ->whereColumn('student_exams.student_id', 'users.id')
+                    ->where('exams.organization_id', $orgId)
+                    ->where('payments.status_code', 2); // PayHere success
             });
         }
 
@@ -57,6 +56,74 @@ class StudentAdminController extends Controller
         }
 
         $paginated = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+        // Attach latest PAID registration per student (exam name + registered_at)
+        $students = $paginated->getCollection();
+        if ($students->isNotEmpty()) {
+            $ids = $students->pluck('id')->all();
+            $orgFilterSql = '';
+            if (!$isSuper) {
+                $orgId = $user->orgAdmin->organization_id ?? null;
+                if ($orgId) {
+                    $orgFilterSql = ' AND exams.organization_id = ' . ((int) $orgId);
+                }
+            }
+            $subSql = '(
+                SELECT student_exams.student_id,
+                       exams.name AS exam_name,
+                       student_exams.created_at AS registered_at,
+                       ROW_NUMBER() OVER (PARTITION BY student_exams.student_id ORDER BY student_exams.created_at DESC) AS rn
+                FROM student_exams
+                JOIN payments ON payments.student_exam_id = student_exams.id
+                JOIN exams ON student_exams.exam_id = exams.id
+                WHERE payments.status_code = 2' . $orgFilterSql . '
+            ) t';
+
+            $latestPaid = \Illuminate\Support\Facades\DB::table(\Illuminate\Support\Facades\DB::raw($subSql))
+                ->where('rn', 1)
+                ->whereIn('student_id', $ids)
+                ->get()
+                ->keyBy('student_id');
+
+            $students->transform(function ($u) use ($latestPaid) {
+                $row = $latestPaid->get($u->id);
+                if ($row) {
+                    // Dynamically attach for resource
+                    $u->setAttribute('last_exam_name', $row->exam_name);
+                    $u->setAttribute('last_registered_at', $row->registered_at);
+                }
+                return $u;
+            });
+
+            // Also attach compact list of paid exams (names) and total count per student
+            $paidRows = \Illuminate\Support\Facades\DB::table('student_exams')
+                ->join('payments', 'payments.student_exam_id', '=', 'student_exams.id')
+                ->join('exams', 'student_exams.exam_id', '=', 'exams.id')
+                ->when(!$isSuper && !empty($orgFilterSql), function ($q) use ($orgId) {
+                    $q->where('exams.organization_id', $orgId);
+                })
+                ->where('payments.status_code', 2)
+                ->whereIn('student_exams.student_id', $ids)
+                ->orderBy('student_exams.created_at', 'desc')
+                ->get(['student_exams.student_id as sid', 'exams.name as exam_name']);
+
+            $byStudent = [];
+            foreach ($paidRows as $r) {
+                $sid = $r->sid;
+                if (!isset($byStudent[$sid])) { $byStudent[$sid] = []; }
+                // prevent duplicates if any
+                if (!in_array($r->exam_name, $byStudent[$sid], true)) {
+                    $byStudent[$sid][] = $r->exam_name;
+                }
+            }
+
+            $students->transform(function ($u) use ($byStudent) {
+                $list = $byStudent[$u->id] ?? [];
+                $u->setAttribute('paid_exam_names', array_slice($list, 0, 3));
+                $u->setAttribute('paid_exam_count', count($list));
+                return $u;
+            });
+        }
 
         return response()->json([
             'message' => 'Students retrieved',
@@ -86,18 +153,17 @@ class StudentAdminController extends Controller
 
             $orgId = $orgAdmin->organization_id;
 
-            $belongsToOrg = $studentUser->organization_id === $orgId;
-            if (!$belongsToOrg) {
-                // Check if the student has any registrations for exams of this organization
-                $hasExamInOrg = DB::table('student_exams')
-                    ->join('exams', 'student_exams.exam_id', '=', 'exams.id')
-                    ->where('student_exams.student_id', $studentUser->id)
-                    ->where('exams.organization_id', $orgId)
-                    ->exists();
+            // Require PAID registration in this organization to view details
+            $hasPaidExamInOrg = DB::table('student_exams')
+                ->join('exams', 'student_exams.exam_id', '=', 'exams.id')
+                ->join('payments', 'payments.student_exam_id', '=', 'student_exams.id')
+                ->where('student_exams.student_id', $studentUser->id)
+                ->where('exams.organization_id', $orgId)
+                ->where('payments.status_code', 2)
+                ->exists();
 
-                if (!$hasExamInOrg) {
-                    return response()->json(['message' => 'Unauthorized. You can only view students registered for your organization\'s exams.'], 403);
-                }
+            if (!$hasPaidExamInOrg) {
+                return response()->json(['message' => 'Unauthorized. Visible only after exam fee is paid for your organization\'s exams.'], 403);
             }
         }
 

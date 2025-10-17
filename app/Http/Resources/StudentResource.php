@@ -27,6 +27,11 @@ class StudentResource extends JsonResource
             'registration' => $user->student->index_number ?? null,
             'nic' => $user->student->passport_nic ?? null,
             'local' => optional($user->student)->local,
+            // Latest paid registration info (if attached in controller index)
+            'last_exam_name' => $user->getAttribute('last_exam_name'),
+            'last_registered_at' => $user->getAttribute('last_registered_at'),
+            'paid_exam_names' => $user->getAttribute('paid_exam_names') ?? [],
+            'paid_exam_count' => $user->getAttribute('paid_exam_count') ?? 0,
             // Only use exams data if it was eager loaded by the controller. This avoids
             // triggering a lazy load that may rely on pivot columns that don't exist in
             // some developer databases (see migrations mismatch).
