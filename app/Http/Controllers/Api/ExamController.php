@@ -48,7 +48,7 @@ class ExamController extends Controller
 
         // Super admin can see all exams
         if ($user->hasRole('super_admin')) {
-            $exams = Exam::with(['organization', 'examDates.locations'])->get();
+            $exams = Exam::with(['organization', 'examDates.locations', 'examDates.studentExams'])->get();
         }
         // Org admin can only see exams related to their organization
         elseif ($user->hasRole('org_admin')) {
@@ -61,14 +61,33 @@ class ExamController extends Controller
                 ], 404);
             }
 
-            $exams = Exam::with(['organization', 'examDates.locations'])
+            $exams = Exam::with(['organization', 'examDates.locations', 'examDates.studentExams'])
                 ->where('organization_id', $organizationId)
                 ->get();
         }
 
+        // Transform the data to include registration counts and max participants
+        $transformedExams = $exams->map(function ($exam) {
+            $exam->examDates = $exam->examDates->map(function ($examDate) {
+                // Calculate total capacity from all locations
+                $maxParticipants = $examDate->locations->sum('capacity');
+                
+                // Count current registrations for this exam date
+                $currentRegistrations = $examDate->studentExams->count();
+                
+                // Add the calculated values to the exam date
+                $examDate->max_participants = $maxParticipants;
+                $examDate->current_registrations = $currentRegistrations;
+                
+                return $examDate;
+            });
+            
+            return $exam;
+        });
+
         return response()->json([
             'message' => 'Exams retrieved successfully',
-            'data' => $exams
+            'data' => $transformedExams
         ]);
     }
 
@@ -453,6 +472,83 @@ class ExamController extends Controller
             $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
             $suffix = $sequence;
             return $prefix . $suffix;
+        }
+    }
+
+    /**
+     * Update exam type details only (name, code_name, description, price)
+     */
+    public function updateType(Request $request, $id): JsonResponse
+    {
+        $user = $request->user();
+        
+        // Check if user has required roles
+        if (!$user->hasAnyRole(['super_admin', 'org_admin'])) {
+            return response()->json([
+                'message' => 'Unauthorized. Admin access required.'
+            ], 403);
+        }
+
+        try {
+            $exam = Exam::findOrFail($id);
+
+            // For org_admin, ensure the exam belongs to their organization
+            if ($user->hasRole('org_admin') && !$user->hasRole('super_admin')) {
+                $user->load('orgAdmin');
+                if (!$user->orgAdmin || $exam->organization_id !== $user->orgAdmin->organization_id) {
+                    return response()->json([
+                        'message' => 'Unauthorized. You can only update exams from your organization.'
+                    ], 403);
+                }
+            }
+
+            // Validate request
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'code_name' => 'required|string|max:50',
+                'description' => 'nullable|string',
+                'price' => 'required|numeric|min:0',
+            ]);
+
+            // Update only exam type fields
+            $exam->update([
+                'name' => $request->name,
+                'code_name' => $request->code_name,
+                'description' => $request->description,
+                'price' => $request->price,
+            ]);
+
+            Log::info('Exam type updated successfully', [
+                'exam_id' => $exam->id,
+                'updated_by' => $user->id,
+                'fields' => ['name', 'code_name', 'description', 'price']
+            ]);
+
+            return response()->json([
+                'message' => 'Exam type updated successfully',
+                'data' => $exam->fresh()
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Exam not found'
+            ], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Failed to update exam type: ' . $e->getMessage(), [
+                'exam_id' => $id,
+                'user_id' => $user->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to update exam type',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 }

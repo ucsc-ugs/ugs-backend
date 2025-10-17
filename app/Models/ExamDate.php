@@ -14,6 +14,7 @@ class ExamDate extends Model
         'date',
         'location',
         'location_id',
+        'registration_deadline',
         'status'
     ];
 
@@ -85,5 +86,13 @@ class ExamDate extends Model
     public function hasAvailableCapacity(): bool
     {
         return $this->getTotalRegistrations() < $this->getTotalCapacity();
+    }
+
+    /**
+     * Get all student registrations for this exam date
+     */
+    public function studentExams(): HasMany
+    {
+        return $this->hasMany(StudentExam::class, 'selected_exam_date_id');
     }
 }
