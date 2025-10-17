@@ -37,12 +37,12 @@ class StudentExamController extends Controller
             DB::beginTransaction();
 
             $examDate = \App\Models\ExamDate::with('locations')->findOrFail($request->exam_date_id);
-            
+
             // Check if student is already registered for this exam date
             $existingRegistration = StudentExam::where('student_id', $request->student_id)
                 ->where('selected_exam_date_id', $request->exam_date_id)
                 ->first();
-            
+
             if ($existingRegistration) {
                 return response()->json([
                     'message' => 'Student is already registered for this exam date'
@@ -51,14 +51,14 @@ class StudentExamController extends Controller
 
             // Auto-assign hall based on priority and capacity
             $assignedLocationId = null;
-            
+
             if ($examDate->locations && $examDate->locations->count() > 0) {
                 foreach ($examDate->locations->sortBy('pivot.priority') as $location) {
                     // Count current registrations for this location
                     $currentRegistrations = StudentExam::where('selected_exam_date_id', $request->exam_date_id)
                         ->where('assigned_location_id', $location->id)
                         ->count();
-                    
+
                     // If this location has capacity, assign student here
                     if ($currentRegistrations < $location->capacity) {
                         $assignedLocationId = $location->id;
@@ -93,7 +93,6 @@ class StudentExamController extends Controller
                 'message' => 'Student registered successfully',
                 'data' => $studentExam->load(['selectedExamDate', 'assignedLocation', 'student'])
             ]);
-
         } catch (\Exception $e) {
             DB::rollback();
             return response()->json([
@@ -109,12 +108,12 @@ class StudentExamController extends Controller
     {
         try {
             $studentsCreated = 0;
-            
+
             // Create 10 sample students
             for ($i = 1; $i <= 10; $i++) {
                 // Check if student already exists
                 $existingStudent = \App\Models\Student::find($i);
-                
+
                 if (!$existingStudent) {
                     // Create user first
                     $user = \App\Models\User::create([
@@ -139,7 +138,6 @@ class StudentExamController extends Controller
                 'message' => "$studentsCreated sample students created successfully",
                 'total_students' => \App\Models\Student::count()
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to create sample students: ' . $e->getMessage()

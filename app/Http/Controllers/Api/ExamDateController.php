@@ -105,14 +105,14 @@ class ExamDateController extends Controller
         $locationDetails = [];
         $totalCapacity = 0;
         $totalRegistrations = $examDate->studentExams->count();
-        
+
         if ($examDate->locations && $examDate->locations->count() > 0) {
             foreach ($examDate->locations as $location) {
                 // Count registrations for this specific location
                 $locationRegistrations = $examDate->studentExams
                     ->where('assigned_location_id', $location->id)
                     ->count();
-                
+
                 $locationDetails[] = [
                     'id' => $location->id,
                     'location_name' => $location->location_name,
@@ -120,11 +120,11 @@ class ExamDateController extends Controller
                     'current_registrations' => $locationRegistrations,
                     'priority' => $location->pivot->priority ?? 0,
                 ];
-                
+
                 $totalCapacity += $location->capacity;
             }
         }
-        
+
         // Legacy single location fallback
         if (empty($locationDetails) && $examDate->location) {
             $locationDetails[] = [
@@ -378,7 +378,7 @@ class ExamDateController extends Controller
             // Validate locations belong to the same organization
             $locationIds = $request->location_ids;
             $organizationId = $examDate->exam->organization_id;
-            
+
             $validLocations = \App\Models\Location::whereIn('id', $locationIds)
                 ->where('organization_id', $organizationId)
                 ->count();
@@ -416,7 +416,6 @@ class ExamDateController extends Controller
                 'message' => 'Exam date updated successfully',
                 'data' => $examDate->fresh(['locations', 'exam'])
             ]);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'message' => 'Exam date not found'
@@ -432,7 +431,7 @@ class ExamDateController extends Controller
                 'user_id' => $user->id,
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'message' => 'Failed to update exam date',
                 'error' => $e->getMessage()
@@ -464,10 +463,10 @@ class ExamDateController extends Controller
             $examDate = ExamDate::with([
                 'exam.organization',
                 'locations',
-                'studentExams' => function($query) use ($locationId) {
+                'studentExams' => function ($query) use ($locationId) {
                     $query->where('assigned_location_id', $locationId)
-                          ->with('student')
-                          ->orderBy('index_number');
+                        ->with('student')
+                        ->orderBy('index_number');
                 }
             ])->findOrFail($examDateId);
 
@@ -490,7 +489,7 @@ class ExamDateController extends Controller
 
             // Get the specific location
             $location = $examDate->locations->where('id', $locationId)->first();
-            
+
             if (!$location) {
                 return response()->json([
                     'message' => 'Location not found for this exam date.'
@@ -507,7 +506,7 @@ class ExamDateController extends Controller
 
             // Generate CSV content
             $csvData = [];
-            
+
             // Add header row
             $csvData[] = [
                 'No.',
@@ -515,7 +514,7 @@ class ExamDateController extends Controller
                 'Student Name',
                 'Signature'
             ];
-            
+
             // Add student data
             foreach ($students as $index => $studentExam) {
                 $csvData[] = [
@@ -529,7 +528,7 @@ class ExamDateController extends Controller
             // Convert to CSV string
             $csvContent = '';
             foreach ($csvData as $row) {
-                $csvContent .= implode(',', array_map(function($field) {
+                $csvContent .= implode(',', array_map(function ($field) {
                     // Escape fields that contain commas, quotes, or newlines
                     if (strpos($field, ',') !== false || strpos($field, '"') !== false || strpos($field, "\n") !== false) {
                         return '"' . str_replace('"', '""', $field) . '"';
@@ -544,7 +543,6 @@ class ExamDateController extends Controller
                 ->header('Content-Type', 'text/csv; charset=UTF-8')
                 ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
                 ->header('Cache-Control', 'no-cache, no-store, must-revalidate');
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'message' => 'Exam date not found'
@@ -556,7 +554,7 @@ class ExamDateController extends Controller
                 'user_id' => $user->id,
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'message' => 'Failed to generate student list',
                 'error' => $e->getMessage()
@@ -731,7 +729,7 @@ class ExamDateController extends Controller
         $examCode = $examDate->exam->code_name;
         $date = $examDate->date->format('Y-m-d');
         $hallName = preg_replace('/[^A-Za-z0-9\-_]/', '', $location->location_name);
-        
+
         return $examCode . '_' . $date . '_' . $hallName . '_StudentList';
     }
 }

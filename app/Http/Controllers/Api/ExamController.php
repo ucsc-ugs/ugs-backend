@@ -71,17 +71,17 @@ class ExamController extends Controller
             $exam->examDates = $exam->examDates->map(function ($examDate) {
                 // Calculate total capacity from all locations
                 $maxParticipants = $examDate->locations->sum('capacity');
-                
+
                 // Count current registrations for this exam date
                 $currentRegistrations = $examDate->studentExams->count();
-                
+
                 // Add the calculated values to the exam date
                 $examDate->max_participants = $maxParticipants;
                 $examDate->current_registrations = $currentRegistrations;
-                
+
                 return $examDate;
             });
-            
+
             return $exam;
         });
 
@@ -481,7 +481,7 @@ class ExamController extends Controller
     public function updateType(Request $request, $id): JsonResponse
     {
         $user = $request->user();
-        
+
         // Check if user has required roles
         if (!$user->hasAnyRole(['super_admin', 'org_admin'])) {
             return response()->json([
@@ -528,7 +528,6 @@ class ExamController extends Controller
                 'message' => 'Exam type updated successfully',
                 'data' => $exam->fresh()
             ]);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'message' => 'Exam not found'
@@ -544,7 +543,7 @@ class ExamController extends Controller
                 'user_id' => $user->id,
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'message' => 'Failed to update exam type',
                 'error' => $e->getMessage()
