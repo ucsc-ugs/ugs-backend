@@ -14,6 +14,17 @@ use Illuminate\Support\Facades\Route;
 // API Admin Routes
 Route::prefix('admin')->group(base_path('routes/api_admin.php'));
 
+// Alias student management routes at /api/students so frontend requests without the /admin prefix work
+Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(function () {
+    Route::get('/students', [App\Http\Controllers\Api\StudentAdminController::class, 'index']);
+    Route::post('/students', [App\Http\Controllers\Api\StudentAdminController::class, 'store']);
+    Route::get('/students/{id}', [App\Http\Controllers\Api\StudentAdminController::class, 'show']);
+    Route::put('/students/{id}', [App\Http\Controllers\Api\StudentAdminController::class, 'update']);
+    Route::delete('/students/{id}', [App\Http\Controllers\Api\StudentAdminController::class, 'destroy']);
+    // Finance overview for org admins
+    Route::get('/finance/overview', [App\Http\Controllers\Api\FinanceController::class, 'overview']);
+});
+
 // Public routes
 Route::post('/login', [AuthController::class, 'authenticate']);
 Route::post('/register', [StudentController::class, 'register']);
