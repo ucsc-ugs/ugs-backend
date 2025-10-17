@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamDate;
+use App\Models\Location;
 use App\Models\StudentExam;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -93,7 +94,8 @@ class ExamController extends Controller
             'registration_deadline' => 'nullable|date',
             'exam_dates' => 'nullable|array',
             'exam_dates.*.date' => 'required|date_format:Y-m-d\TH:i',
-            'exam_dates.*.location' => 'nullable|string|max:255'
+            'exam_dates.*.location' => 'nullable|string|max:255',
+            'exam_dates.*.location_id' => 'nullable|exists:locations,id'
         ]);
 
         // For org_admin, ensure they can only create exams for their organization
@@ -128,7 +130,8 @@ class ExamController extends Controller
                 ExamDate::create([
                     'exam_id' => $exam->id,
                     'date' => $examDate['date'],
-                    'location' => $examDate['location'] ?? null
+                    'location' => $examDate['location'] ?? null,
+                    'location_id' => $examDate['location_id'] ?? null
                 ]);
             }
         }
@@ -184,7 +187,8 @@ class ExamController extends Controller
             'registration_deadline' => 'nullable|date',
             'exam_dates' => 'nullable|array',
             'exam_dates.*.date' => 'required|date_format:Y-m-d\TH:i',
-            'exam_dates.*.location' => 'nullable|string|max:255'
+            'exam_dates.*.location' => 'nullable|string|max:255',
+            'exam_dates.*.location_id' => 'nullable|exists:locations,id'
         ]);
 
         // Update exam basic info
@@ -208,7 +212,8 @@ class ExamController extends Controller
                     ExamDate::create([
                         'exam_id' => $exam->id,
                         'date' => $examDate['date'],
-                        'location' => $examDate['location'] ?? null
+                        'location' => $examDate['location'] ?? null,
+                        'location_id' => $examDate['location_id'] ?? null
                     ]);
                 }
             }
@@ -228,6 +233,15 @@ class ExamController extends Controller
      */
     public function delete(string $id): JsonResponse
     {
+        $user = request()->user();
+
+        // Check if user has required roles
+        if (!$user->hasAnyRole(['super_admin', 'org_admin'])) {
+            return response()->json([
+                'message' => 'Unauthorized. Admin access required.'
+            ], 403);
+        }
+
         $exam = Exam::find($id);
 
         if (!$exam) {
@@ -236,20 +250,45 @@ class ExamController extends Controller
             ], 404);
         }
 
-        $exam->delete();
+        // For org_admin, ensure they can only delete exams for their organization
+        if ($user->hasRole('org_admin')) {
+            $user->load('orgAdmin');
+            $organizationId = $user->organization_id ?? $user->orgAdmin?->organization_id;
 
-        return response()->json([
-            'message' => 'Exam deleted successfully'
-        ]);
+            if (!$organizationId || $exam->organization_id !== $organizationId) {
+                return response()->json([
+                    'message' => 'Unauthorized. You can only delete exams for your organization.'
+                ], 403);
+            }
+        }
+
+        try {
+            $exam->delete();
+
+            return response()->json([
+                'message' => 'Exam deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to delete exam: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function regForExam()
     {
         $exam_id = request()->examId;
+        $selected_exam_date_id = request()->selectedExamDateId;
 
         if (!$exam_id) {
             return response()->json([
                 'message' => 'Exam ID is required'
+            ], 400);
+        }
+
+        if (!$selected_exam_date_id) {
+            return response()->json([
+                'message' => 'Selected exam date is required'
             ], 400);
         }
 
@@ -259,6 +298,57 @@ class ExamController extends Controller
                 'message' => 'Exam not found'
             ], 404);
         }
+
+        // Verify that the selected exam date belongs to this exam
+        $examDate = ExamDate::where('id', $selected_exam_date_id)
+            ->where('exam_id', $exam_id)
+            ->first();
+
+        if (!$examDate) {
+            return response()->json([
+                'message' => 'Invalid exam date selected'
+            ], 400);
+        }
+
+        // Check if student is already registered for this exam
+        $existingRegistration = StudentExam::where('student_id', Auth::id())
+            ->where('exam_id', $exam_id)
+            ->first();
+
+        if ($existingRegistration) {
+            return response()->json([
+                'message' => 'You are already registered for this exam'
+            ], 400);
+        }
+
+        // Find the first available location for this exam's organization
+        $assigned_location_id = null;
+        $exam_organization_id = $exam->organization_id;
+
+        if ($exam_organization_id) {
+            $availableLocation = Location::where('organization_id', $exam_organization_id)
+                ->whereHas('examDates', function ($query) use ($selected_exam_date_id) {
+                    $query->where('exam_dates.id', $selected_exam_date_id);
+                })
+                ->get()
+                ->first(function ($location) {
+                    return $location->hasAvailableCapacity();
+                });
+
+            // If no location found directly linked to exam date, try any location in the organization
+            if (!$availableLocation) {
+                $availableLocation = Location::where('organization_id', $exam_organization_id)
+                    ->get()
+                    ->first(function ($location) {
+                        return $location->hasAvailableCapacity();
+                    });
+            }
+
+            if ($availableLocation) {
+                $assigned_location_id = $availableLocation->id;
+            }
+        }
+
         $exam_name = $exam->code_name;
 
         // Proceed with registration logic
@@ -266,6 +356,8 @@ class ExamController extends Controller
             'index_number' => $this->genIndexNumber($exam_name),
             'student_id' => Auth::id(),
             'exam_id' => $exam_id,
+            'selected_exam_date_id' => $selected_exam_date_id,
+            'assigned_location_id' => $assigned_location_id,
             'payment_id' => null,
         ]);
 

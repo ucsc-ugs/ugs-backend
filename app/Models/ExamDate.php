@@ -10,6 +10,7 @@ class ExamDate extends Model
         'exam_id',
         'date',
         'location',
+        'location_id',
         'status'
     ];
 
@@ -20,5 +21,10 @@ class ExamDate extends Model
     public function exam()
     {
         return $this->belongsTo(Exam::class);
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(Location::class);
     }
 }

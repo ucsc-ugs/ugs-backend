@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\ExamDateController;
 use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
 
@@ -46,12 +47,7 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::put('/my-organization', [OrgAdminController::class, 'updateMyOrganization']);
     Route::post('/my-organization/logo', [OrgAdminController::class, 'uploadOrganizationLogo']);
 
-    // Profile maintenance
-    Route::get('/profile', [UserController::class, 'user']); // Same as /api/user endpoint
-    Route::patch('/profile', [UserController::class, 'updateProfile']);
 
-    // Route::delete('/profile', [UserController::class, 'deleteProfile']);  // Not implemented yet
-    Route::put('/profile/password', [UserController::class, 'updatePassword']);
 
     // Exam routes (token authentication required)
     Route::get('/exam', [ExamController::class, 'index']);
@@ -63,6 +59,15 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     // Exam Date routes
     Route::patch('/exam-date/{id}/status', [ExamDateController::class, 'updateStatus']);
     Route::post('/exam-dates/update-expired-statuses', [ExamDateController::class, 'updateExpiredStatuses']);
+    Route::get('/exam-dates/{id}/details', [ExamDateController::class, 'details']);
+
+    // Location routes
+    Route::get('/locations', [LocationController::class, 'index']);
+    Route::post('/locations', [LocationController::class, 'store']);
+    Route::get('/locations/{id}', [LocationController::class, 'show']);
+    Route::put('/locations/{id}', [LocationController::class, 'update']);
+    Route::delete('/locations/{id}', [LocationController::class, 'destroy']);
+    Route::get('/organizations/{organizationId}/locations', [LocationController::class, 'getByOrganization']);
 
     // Debug route to test user context
     Route::get('/debug/user-context', function (Request $request) {
@@ -76,12 +81,4 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
             'is_super_admin' => $user->hasRole('super_admin')
         ]);
     });
-
-    // Organization routes (token authentication requiredd)
-    Route::get('/organization', [OrganizationController::class, 'index']);
-    Route::post('/organization/create', [OrganizationController::class, 'create']);
-    Route::put('/organization/update/{id}', [OrganizationController::class, 'update']);
-    Route::delete('/organization/delete/{id}', [OrganizationController::class, 'delete']);
-    Route::get('/organization/{id}', [OrganizationController::class, 'show']);
-    Route::post('/organization/{id}/logo', [OrganizationController::class, 'uploadLogo']);
 });

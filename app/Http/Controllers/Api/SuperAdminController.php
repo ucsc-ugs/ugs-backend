@@ -161,12 +161,12 @@ class SuperAdminController extends Controller
 
             // Create user
             $user = User::create([
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'password' => Hash::make($data['password'])
-            ]);
-
-            // Assign org_admin role
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'user_type' => 'org-admin',
+                'organization_id' => $data['organization_id'],
+            ]);            // Assign org_admin role
             $user->assignRole('org_admin');
 
             // Create org admin record
