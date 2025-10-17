@@ -29,7 +29,9 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
 Route::post('/login', [AuthController::class, 'authenticate']);
 Route::post('/register', [StudentController::class, 'register']);
 Route::get('/exams', [ExamController::class, 'publicIndex']); // Public exam listing for students
+Route::get('/exams/{id}', [\App\Http\Controllers\NotificationController::class, 'examDetails']); // Public exam details for students
 Route::get('/exams/{code_name}', [ExamController::class, 'show']); // Public exam details for students
+
 
 Route::post('/payment/notify', [PaymentController::class, 'notify'])->name('payment.notify');  // uses a public URL: https://6c8f55c58cf7.ngrok-free.app/payment/notify
 

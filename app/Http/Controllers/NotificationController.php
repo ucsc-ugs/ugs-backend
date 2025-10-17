@@ -15,45 +15,96 @@ class NotificationController extends Controller
     public function index(Request $request)
     {
         try {
+            // Try to get student_id from query parameter (for public access) or from authenticated user
             $studentId = $request->query('student_id');
-            $examIds = [];
-            if ($studentId) {
-                $examIds = StudentExam::where('student_id', $studentId)
-                    ->pluck('exam_id')
-                    ->toArray();
+
+            // If no student_id in query and user is authenticated, use authenticated user's ID
+            if (!$studentId && Auth::check()) {
+                $user = Auth::user();
+                // Assuming the user model has a student_id or id field
+                $studentId = $user->student_id ?? $user->id;
+                Log::info('Using authenticated user ID:', ['student_id' => $studentId]);
+            }
+
+            // If still no student_id, return all general announcements only
+            if (!$studentId) {
+                Log::info('No student ID provided, returning general announcements only');
+                $now = now();
+                $allAnnouncements = Announcement::where('status', 'published')
+                    ->where('audience', 'all')
+                    ->where('expiry_date', '>=', $now)
+                    ->get();
+
+                $result = $allAnnouncements->map(function ($announcement) {
+                    return [
+                        'id' => $announcement->id,
+                        'title' => $announcement->title,
+                        'message' => $announcement->message,
+                        'audience' => $announcement->audience,
+                        'exam_id' => $announcement->exam_id,
+                        'publish_date' => $announcement->publish_date
+                            ? (is_object($announcement->publish_date) ? $announcement->publish_date->format('Y-m-d H:i:s') : (string)$announcement->publish_date)
+                            : (is_object($announcement->created_at) ? $announcement->created_at->format('Y-m-d H:i:s') : (string)$announcement->created_at),
+                        'expiry_date' => $announcement->expiry_date
+                            ? (is_object($announcement->expiry_date) ? $announcement->expiry_date->format('Y-m-d H:i:s') : (string)$announcement->expiry_date)
+                            : null,
+                        'status' => $announcement->status,
+                        'priority' => $announcement->priority ?? 'medium',
+                        'category' => $announcement->category ?? 'general',
+                        'is_pinned' => $announcement->is_pinned ?? false,
+                        'created_at' => is_object($announcement->created_at) ? $announcement->created_at->format('Y-m-d H:i:s') : (string)$announcement->created_at,
+                        'tags' => $announcement->tags ?? [],
+                    ];
+                });
+
+                return response()->json($result, 200);
             }
 
             $now = now();
 
-            // Get published announcements for all students that haven't expired
+            // General announcements (audience=all, published, not expired)
             $allAnnouncements = Announcement::where('status', 'published')
                 ->where('audience', 'all')
                 ->where('expiry_date', '>=', $now)
                 ->get();
 
-            // Get published exam-specific announcements for exams the student is registered for
-            $examAnnouncements = [];
-            if (!empty($examIds)) {
+            Log::info('General announcements found:', ['count' => $allAnnouncements->count()]);
+
+            // Get all exam_ids the student is registered for
+            $studentExamIds = StudentExam::where('student_id', $studentId)
+                ->pluck('exam_id')
+                ->toArray();
+
+            Log::info('Student exam IDs:', ['student_id' => $studentId, 'exam_ids' => $studentExamIds]);
+
+            // Exam-specific announcements (audience=exam-specific, published, not expired, exam_id in student's registered exams)
+            $examAnnouncements = collect([]);
+            if (!empty($studentExamIds)) {
                 $examAnnouncements = Announcement::where('status', 'published')
                     ->where('audience', 'exam-specific')
-                    ->whereIn('exam_id', $examIds)
+                    ->whereIn('exam_id', $studentExamIds)
                     ->where('expiry_date', '>=', $now)
                     ->get();
+
+                Log::info('Exam-specific announcements found:', ['count' => $examAnnouncements->count()]);
+            } else {
+                Log::info('Student has no registered exams');
+            }
+
+            // Get exam details for all relevant exam_ids
+            $allExamIds = $examAnnouncements->pluck('exam_id')->unique()->toArray();
+            $examDetails = [];
+            if (!empty($allExamIds)) {
+                $examDetails = \App\Models\Exam::whereIn('id', $allExamIds)
+                    ->get()
+                    ->keyBy('id')
+                    ->toArray();
             }
 
             // Merge and sort by created_at DESC (most recent first)
             $merged = collect($allAnnouncements)->merge($examAnnouncements)
                 ->sortByDesc('created_at')
                 ->values();
-
-            // Get exam details for exam-specific announcements
-            $examDetails = [];
-            if (!empty($examIds)) {
-                $examDetails = \App\Models\Exam::whereIn('id', $examIds)
-                    ->get()
-                    ->keyBy('id')
-                    ->toArray();
-            }
 
             // Format response with essential details
             $result = $merged->map(function ($announcement) use ($examDetails) {
@@ -86,6 +137,12 @@ class NotificationController extends Controller
                 return $data;
             });
 
+            Log::info('Returning notifications:', [
+                'total_count' => $result->count(),
+                'general_count' => $allAnnouncements->count(),
+                'exam_specific_count' => $examAnnouncements->count()
+            ]);
+
             return response()->json($result, 200);
         } catch (\Exception $e) {
             Log::error('Notification fetch error: ' . $e->getMessage());
@@ -95,5 +152,17 @@ class NotificationController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Get exam details by exam ID (for notification modal)
+     */
+    public function examDetails($id)
+    {
+        $exam = \App\Models\Exam::find($id);
+        if (!$exam) {
+            return response()->json(['error' => 'Exam not found'], 404);
+        }
+        return response()->json($exam);
     }
 }
