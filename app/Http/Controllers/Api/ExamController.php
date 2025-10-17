@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamDate;
+use App\Models\ExamDateLocation;
 use App\Models\Location;
 use App\Models\StudentExam;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class ExamController extends Controller
      */
     public function publicIndex(): JsonResponse
     {
-        $exams = Exam::with(['organization', 'examDates'])
+        $exams = Exam::with(['organization', 'examDates.locations'])
             ->where('created_at', '<=', now()) // Only show created exams
             ->get();
 
@@ -47,7 +48,7 @@ class ExamController extends Controller
 
         // Super admin can see all exams
         if ($user->hasRole('super_admin')) {
-            $exams = Exam::with(['organization', 'examDates'])->get();
+            $exams = Exam::with(['organization', 'examDates.locations'])->get();
         }
         // Org admin can only see exams related to their organization
         elseif ($user->hasRole('org_admin')) {
@@ -60,7 +61,7 @@ class ExamController extends Controller
                 ], 404);
             }
 
-            $exams = Exam::with(['organization', 'examDates'])
+            $exams = Exam::with(['organization', 'examDates.locations'])
                 ->where('organization_id', $organizationId)
                 ->get();
         }
@@ -95,7 +96,9 @@ class ExamController extends Controller
             'exam_dates' => 'nullable|array',
             'exam_dates.*.date' => 'required|date_format:Y-m-d\TH:i',
             'exam_dates.*.location' => 'nullable|string|max:255',
-            'exam_dates.*.location_id' => 'nullable|exists:locations,id'
+            'exam_dates.*.location_id' => 'nullable|exists:locations,id',
+            'exam_dates.*.location_ids' => 'nullable|array',
+            'exam_dates.*.location_ids.*' => 'exists:locations,id'
         ]);
 
         // For org_admin, ensure they can only create exams for their organization
@@ -126,18 +129,38 @@ class ExamController extends Controller
 
         // Create exam dates if provided
         if (!empty($validated['exam_dates'])) {
-            foreach ($validated['exam_dates'] as $examDate) {
-                ExamDate::create([
+            foreach ($validated['exam_dates'] as $examDateData) {
+                $examDate = ExamDate::create([
                     'exam_id' => $exam->id,
-                    'date' => $examDate['date'],
-                    'location' => $examDate['location'] ?? null,
-                    'location_id' => $examDate['location_id'] ?? null
+                    'date' => $examDateData['date'],
+                    'location' => $examDateData['location'] ?? null,
+                    'location_id' => $examDateData['location_id'] ?? null
                 ]);
+
+                // Handle multiple locations
+                if (!empty($examDateData['location_ids'])) {
+                    foreach ($examDateData['location_ids'] as $index => $locationId) {
+                        ExamDateLocation::create([
+                            'exam_date_id' => $examDate->id,
+                            'location_id' => $locationId,
+                            'priority' => $index + 1, // 1-based priority
+                            'current_registrations' => 0
+                        ]);
+                    }
+                } elseif (!empty($examDateData['location_id'])) {
+                    // Backward compatibility - single location
+                    ExamDateLocation::create([
+                        'exam_date_id' => $examDate->id,
+                        'location_id' => $examDateData['location_id'],
+                        'priority' => 1,
+                        'current_registrations' => 0
+                    ]);
+                }
             }
         }
 
-        // Load the exam with its dates for response
-        $exam->load('examDates');
+        // Load the exam with its dates and locations for response
+        $exam->load(['examDates.locations', 'examDates.examDateLocations.location']);
 
         return response()->json([
             'message' => 'Exam created successfully',
@@ -188,7 +211,9 @@ class ExamController extends Controller
             'exam_dates' => 'nullable|array',
             'exam_dates.*.date' => 'required|date_format:Y-m-d\TH:i',
             'exam_dates.*.location' => 'nullable|string|max:255',
-            'exam_dates.*.location_id' => 'nullable|exists:locations,id'
+            'exam_dates.*.location_id' => 'nullable|exists:locations,id',
+            'exam_dates.*.location_ids' => 'nullable|array',
+            'exam_dates.*.location_ids.*' => 'exists:locations,id'
         ]);
 
         // Update exam basic info
@@ -203,24 +228,45 @@ class ExamController extends Controller
 
         // Update exam dates if provided
         if (array_key_exists('exam_dates', $validated)) {
-            // Delete existing exam dates
+            // Delete existing exam dates (this will cascade delete exam_date_locations)
             $exam->examDates()->delete();
 
             // Create new exam dates if provided
             if (!empty($validated['exam_dates'])) {
-                foreach ($validated['exam_dates'] as $examDate) {
-                    ExamDate::create([
+                foreach ($validated['exam_dates'] as $examDateData) {
+                    $examDate = ExamDate::create([
                         'exam_id' => $exam->id,
-                        'date' => $examDate['date'],
-                        'location' => $examDate['location'] ?? null,
-                        'location_id' => $examDate['location_id'] ?? null
+                        'date' => $examDateData['date'],
+                        'location' => $examDateData['location'] ?? null,
+                        'location_id' => $examDateData['location_id'] ?? null
                     ]);
+
+                    // Handle multiple locations (new format)
+                    if (!empty($examDateData['location_ids']) && is_array($examDateData['location_ids'])) {
+                        foreach ($examDateData['location_ids'] as $index => $locationId) {
+                            ExamDateLocation::create([
+                                'exam_date_id' => $examDate->id,
+                                'location_id' => $locationId,
+                                'priority' => $index + 1, // Priority based on array order
+                                'current_registrations' => 0
+                            ]);
+                        }
+                    }
+                    // Handle single location (backward compatibility)
+                    elseif (!empty($examDateData['location_id'])) {
+                        ExamDateLocation::create([
+                            'exam_date_id' => $examDate->id,
+                            'location_id' => $examDateData['location_id'],
+                            'priority' => 1,
+                            'current_registrations' => 0
+                        ]);
+                    }
                 }
             }
         }
 
-        // Load the exam with its dates for response
-        $exam->load('examDates');
+        // Load the exam with its dates and locations for response
+        $exam->load('examDates.locations');
 
         return response()->json([
             'message' => 'Exam updated successfully',

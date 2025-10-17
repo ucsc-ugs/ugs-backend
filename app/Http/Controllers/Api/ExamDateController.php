@@ -153,4 +153,160 @@ class ExamDateController extends Controller
             'registrations' => $registrations,
         ]);
     }
+
+    /**
+     * Add a new exam date to an existing exam
+     */
+    public function addDateToExam(Request $request, $examId): JsonResponse
+    {
+        $user = $request->user();
+
+        // Check if user has required roles
+        if (!$user->hasAnyRole(['super_admin', 'org_admin'])) {
+            return response()->json([
+                'message' => 'Unauthorized. Admin access required.'
+            ], 403);
+        }
+
+        // Find the exam
+        $exam = \App\Models\Exam::findOrFail($examId);
+
+        // For org_admin, ensure they can only add dates to their organization's exams
+        if ($user->hasRole('org_admin')) {
+            $user->load('orgAdmin');
+            $organizationId = $user->organization_id ?? $user->orgAdmin?->organization_id;
+
+            if (!$organizationId || $exam->organization_id !== $organizationId) {
+                return response()->json([
+                    'message' => 'Unauthorized. You can only manage exams for your organization.'
+                ], 403);
+            }
+        }
+
+        $validated = $request->validate([
+            'date' => 'required|date_format:Y-m-d\TH:i|after:now',
+            'location' => 'nullable|string|max:255',
+            'location_id' => 'nullable|exists:locations,id',
+            'location_ids' => 'nullable|array',
+            'location_ids.*' => 'exists:locations,id'
+        ]);
+
+        // Create the exam date
+        $examDate = \App\Models\ExamDate::create([
+            'exam_id' => $exam->id,
+            'date' => $validated['date'],
+            'location' => $validated['location'] ?? null,
+            'location_id' => $validated['location_id'] ?? null,
+            'status' => 'upcoming'
+        ]);
+
+        // Handle multiple locations (new format)
+        if (!empty($validated['location_ids']) && is_array($validated['location_ids'])) {
+            foreach ($validated['location_ids'] as $index => $locationId) {
+                \App\Models\ExamDateLocation::create([
+                    'exam_date_id' => $examDate->id,
+                    'location_id' => $locationId,
+                    'priority' => $index + 1,
+                    'current_registrations' => 0
+                ]);
+            }
+        }
+        // Handle single location (backward compatibility)
+        elseif (!empty($validated['location_id'])) {
+            \App\Models\ExamDateLocation::create([
+                'exam_date_id' => $examDate->id,
+                'location_id' => $validated['location_id'],
+                'priority' => 1,
+                'current_registrations' => 0
+            ]);
+        }
+
+        // Load the exam date with relationships
+        $examDate->load('locations', 'exam');
+
+        return response()->json([
+            'message' => 'Exam date added successfully',
+            'data' => $examDate
+        ]);
+    }
+
+    /**
+     * Add multiple exam dates to an existing exam (bulk operation)
+     */
+    public function addMultipleDatesToExam(Request $request, $examId): JsonResponse
+    {
+        $user = $request->user();
+
+        // Check if user has required roles
+        if (!$user->hasAnyRole(['super_admin', 'org_admin'])) {
+            return response()->json([
+                'message' => 'Unauthorized. Admin access required.'
+            ], 403);
+        }
+
+        // Find the exam
+        $exam = \App\Models\Exam::findOrFail($examId);
+
+        // For org_admin, ensure they can only add dates to their organization's exams
+        if ($user->hasRole('org_admin')) {
+            $user->load('orgAdmin');
+            $organizationId = $user->organization_id ?? $user->orgAdmin?->organization_id;
+
+            if (!$organizationId || $exam->organization_id !== $organizationId) {
+                return response()->json([
+                    'message' => 'Unauthorized. You can only manage exams for your organization.'
+                ], 403);
+            }
+        }
+
+        $validated = $request->validate([
+            'exam_dates' => 'required|array|min:1|max:10',
+            'exam_dates.*.date' => 'required|date_format:Y-m-d\TH:i|after:now',
+            'exam_dates.*.location' => 'nullable|string|max:255',
+            'exam_dates.*.location_id' => 'nullable|exists:locations,id',
+            'exam_dates.*.location_ids' => 'nullable|array',
+            'exam_dates.*.location_ids.*' => 'exists:locations,id'
+        ]);
+
+        $createdExamDates = [];
+
+        foreach ($validated['exam_dates'] as $examDateData) {
+            // Create the exam date
+            $examDate = \App\Models\ExamDate::create([
+                'exam_id' => $exam->id,
+                'date' => $examDateData['date'],
+                'location' => $examDateData['location'] ?? null,
+                'location_id' => $examDateData['location_id'] ?? null,
+                'status' => 'upcoming'
+            ]);
+
+            // Handle multiple locations (new format)
+            if (!empty($examDateData['location_ids']) && is_array($examDateData['location_ids'])) {
+                foreach ($examDateData['location_ids'] as $index => $locationId) {
+                    \App\Models\ExamDateLocation::create([
+                        'exam_date_id' => $examDate->id,
+                        'location_id' => $locationId,
+                        'priority' => $index + 1,
+                        'current_registrations' => 0
+                    ]);
+                }
+            }
+            // Handle single location (backward compatibility)
+            elseif (!empty($examDateData['location_id'])) {
+                \App\Models\ExamDateLocation::create([
+                    'exam_date_id' => $examDate->id,
+                    'location_id' => $examDateData['location_id'],
+                    'priority' => 1,
+                    'current_registrations' => 0
+                ]);
+            }
+
+            $createdExamDates[] = $examDate->load('locations', 'exam');
+        }
+
+        return response()->json([
+            'message' => count($createdExamDates) . ' exam dates added successfully',
+            'data' => $createdExamDates
+        ]);
+    }
 }

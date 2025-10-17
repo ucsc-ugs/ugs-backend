@@ -60,6 +60,8 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::patch('/exam-date/{id}/status', [ExamDateController::class, 'updateStatus']);
     Route::post('/exam-dates/update-expired-statuses', [ExamDateController::class, 'updateExpiredStatuses']);
     Route::get('/exam-dates/{id}/details', [ExamDateController::class, 'details']);
+    Route::post('/exam/{examId}/exam-dates', [ExamDateController::class, 'addDateToExam']);
+    Route::post('/exam/{examId}/exam-dates/bulk', [ExamDateController::class, 'addMultipleDatesToExam']);
 
     // Location routes
     Route::get('/locations', [LocationController::class, 'index']);
