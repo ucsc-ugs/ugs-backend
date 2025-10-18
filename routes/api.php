@@ -79,6 +79,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/general-notifications', [\App\Http\Controllers\GeneralNotificationController::class, 'index']);
     Route::post('/general-notifications/{id}/mark-as-read', [\App\Http\Controllers\GeneralNotificationController::class, 'markAsRead']);
     Route::post('/general-notifications/mark-all-as-read', [\App\Http\Controllers\GeneralNotificationController::class, 'markAllAsRead']);
+
+    // Student exam dates endpoint
+    Route::get('/student/exam-dates', [\App\Http\Controllers\StudentExamDateController::class, 'getStudentExamDates']);
 });
 
 // Email verification routes
