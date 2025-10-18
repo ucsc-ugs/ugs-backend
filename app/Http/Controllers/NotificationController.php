@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use App\Models\Notification;
 use App\Models\Announcement;
 use App\Models\StudentExam;
 
@@ -101,13 +100,25 @@ class NotificationController extends Controller
                     ->toArray();
             }
 
+
+            // Get all announcement IDs
+            $allAnnouncementIds = collect($allAnnouncements)->pluck('id')->merge($examAnnouncements->pluck('id'))->unique()->toArray();
+            // Get read announcements for this student
+            $readIds = [];
+            if ($studentId) {
+                $readIds = \App\Models\AnnouncementRead::where('student_id', $studentId)
+                    ->whereIn('announcement_id', $allAnnouncementIds)
+                    ->pluck('announcement_id')
+                    ->toArray();
+            }
+
             // Merge and sort by created_at DESC (most recent first)
             $merged = collect($allAnnouncements)->merge($examAnnouncements)
                 ->sortByDesc('created_at')
                 ->values();
 
-            // Format response with essential details
-            $result = $merged->map(function ($announcement) use ($examDetails) {
+            // Format response with essential details and read status
+            $result = $merged->map(function ($announcement) use ($examDetails, $readIds) {
                 $data = [
                     'id' => $announcement->id,
                     'title' => $announcement->title,
@@ -126,6 +137,7 @@ class NotificationController extends Controller
                     'is_pinned' => $announcement->is_pinned ?? false,
                     'created_at' => is_object($announcement->created_at) ? $announcement->created_at->format('Y-m-d H:i:s') : (string)$announcement->created_at,
                     'tags' => $announcement->tags ?? [],
+                    'is_read' => in_array($announcement->id, $readIds),
                 ];
 
                 // Add exam title if exam-specific

@@ -171,6 +171,37 @@ class SuperAdminController extends Controller
             // Assign org_admin role
             $user->assignRole('org_admin');
 
+            // Give org admin all their permissions
+            $orgAdminPermissions = [
+                'organization.view',
+                'organization.update',
+                'organization.admins.create',
+                'organization.admins.view',
+                'organization.admins.update',
+                'organization.admins.delete',
+                'student.create',
+                'student.view',
+                'student.update',
+                'student.delete',
+                'student.detail.view',
+                'exam.create',
+                'exam.view',
+                'exam.update',
+                'exam.schedule.set',
+                'exam.schedule.update',
+                'exam.registration.deadline.set',
+                'exam.registration.deadline.extend',
+                'exam.location.manage',
+                'payments.view',
+                'payments.create',
+                'payments.update',
+                'announcement.create',
+                'announcement.view',
+                'announcement.update',
+                'announcement.publish',
+            ];
+            $user->givePermissionTo($orgAdminPermissions);
+
             // Create org admin record
             $orgAdmin = OrgAdmin::create([
                 'name' => $data['name'],

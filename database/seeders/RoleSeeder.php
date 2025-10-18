@@ -22,11 +22,58 @@ class RoleSeeder extends Seeder
 
         // Create permissions
         $permissions = [
-            'manage-organizations',
-            'manage-org-admins',
-            'manage-students',
-            'view-dashboard',
-            'manage-exams',
+            # Organizations management permissions (CRUD + admins)
+            'organization.create',
+            'organization.view',
+            'organization.update',
+            'organization.delete',
+            'organization.admins.create',
+            'organization.admins.view',
+            'organization.admins.update',
+            'organization.admins.delete',
+
+            # Student management permissions (CRUD + details & results)
+            'student.create',
+            'student.view',
+            'student.update',
+            'student.delete',
+            'student.detail.view',
+            'student.results.publish',
+            'student.attendance.view',
+
+            # Exam management permissions (CRUD + deadlines, schedule, announcements)
+            'exam.create',
+            'exam.view',
+            'exam.update',
+            'exam.delete',
+            'exam.registration.deadline.set',
+            'exam.registration.deadline.extend',
+            'exam.schedule.set',
+            'exam.schedule.update',
+            'exam.announcement.publish',
+            'exam.notification.send',
+            'exam.change.notify',
+
+            # Exam locations
+            'exam.location.manage',
+
+            # Finance management permissions (CRUD + payments)
+            'finance.create',
+            'finance.view',
+            'finance.update',
+            'finance.delete',
+            'payments.create',
+            'payments.view',
+            'payments.update',
+            'payments.delete',
+            'payments.refund',
+
+            # Announcements and notifications permissions
+            'announcement.create',
+            'announcement.view',
+            'announcement.update',
+            'announcement.delete',
+            'announcement.publish',
         ];
 
         foreach ($permissions as $permission) {
@@ -34,22 +81,49 @@ class RoleSeeder extends Seeder
         }
 
         // Assign permissions to roles
+        // Super admin gets everything
         $superAdminRole->givePermissionTo($permissions);
-        $orgAdminRole->givePermissionTo(['manage-students', 'view-dashboard', 'manage-exams']);
-        $studentRole->givePermissionTo(['view-dashboard']);
 
-        // Create default super admin if none exists
-        $superAdmin = User::role('super_admin')->first();
-        if (!$superAdmin) {
-            $superAdmin = User::create([
-                'name' => 'Super Admin',
-                'email' => 'admin@ugs.com',
-                'password' => Hash::make('admin123'),
-            ]);
+        // Org admin: allow viewing and managing students, exams and payments within their org
+        $orgAdminRole->givePermissionTo([
+            'organization.view',
+            'organization.update',
+            'organization.admins.create',
+            'organization.admins.view',
+            'organization.admins.update',
+            'organization.admins.delete',
 
-            $superAdmin->assignRole('super_admin');
+            'student.create',
+            'student.view',
+            'student.update',
+            'student.delete',
+            'student.detail.view',
 
-            $this->command->info('Default super admin created: admin@ugs.com / admin123');
-        }
+            'exam.create',
+            'exam.view',
+            'exam.update',
+            'exam.schedule.set',
+            'exam.schedule.update',
+            'exam.registration.deadline.set',
+            'exam.registration.deadline.extend',
+            'exam.location.manage',
+
+            'payments.view',
+            'payments.create',
+            'payments.update',
+
+            'announcement.create',
+            'announcement.view',
+            'announcement.update',
+            'announcement.publish',
+        ]);
+
+        // Student role: limited view-only permissions
+        $studentRole->givePermissionTo([
+            'exam.view',
+            'student.detail.view',
+            'announcement.view',
+            'payments.view',
+        ]);
     }
 }

@@ -16,21 +16,21 @@ class UserResource extends JsonResource
     {
         return [
             'type' => 'user',
-            'role' => $this->getRoleNames()->first(),
+            'role' => $this->resource->getRoleNames()->first(),
             'id' => $this->id,
-            'organization_id' => $this->organization_id,
+            'organization_id' => $this->organization_id ?? $this->orgAdmin?->organization_id,
             'user_type' => $this->user_type,
             'data' => [
                 'name' => $this->name,
                 'email' => $this->email,
                 'created_at' => $this->created_at,
-                'student' => $this->getRoleNames()->first() === 'student' ? [
+                'student' => $this->resource->getRoleNames()->first() === 'student' ? [
                     'local' => $this->student?->local,
                     'passport_nic' => $this->student?->passport_nic,
                 ] : null,
             ],
             'meta' => [
-                'permissions' => $this->getAllPermissions()->pluck('name'),
+                'permissions' => $this->permissions->pluck('name'),
             ],
         ];
     }
