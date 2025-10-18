@@ -15,6 +15,10 @@ class Organization extends Model
         'logo',
         'admin_id',
         'status',
+        'contact_email',
+        'phone_number',
+        'website',
+        'address',
     ];
 
     /**

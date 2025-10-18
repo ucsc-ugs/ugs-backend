@@ -302,14 +302,19 @@ class OrgAdminController extends Controller
             return response()->json(['message' => 'Unauthorized. Organization admin access required.'], 403);
         }
 
+        // Log the incoming request data for debugging
+        Log::info('Organization update request data:', $request->all());
+
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'description' => ['sometimes', 'string', 'max:1000'],
-            'contact_email' => ['sometimes', 'email'],
-            'phone_number' => ['sometimes', 'string', 'max:20'],
-            'address' => ['sometimes', 'string', 'max:500'],
-            'website' => ['sometimes', 'url', 'max:255']
+            'contact_email' => ['sometimes', 'nullable', 'email'],
+            'phone_number' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'address' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'website' => ['sometimes', 'nullable', 'url', 'max:255']
         ]);
+
+        Log::info('Validated organization update data:', $data);
 
         try {
             $organization = $orgAdmin->organization;
@@ -377,6 +382,42 @@ class OrgAdminController extends Controller
             return response()->json([
                 'message' => 'Failed to upload logo',
                 'errors' => ['logo' => 'Something went wrong during upload.']
+            ], 500);
+        }
+    }
+
+    public function changePassword(Request $request)
+    {
+        $user = $request->user();
+
+        // Validate input
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        try {
+            // Verify current password
+            if (!Hash::check($data['current_password'], $user->password)) {
+                return response()->json([
+                    'message' => 'Current password is incorrect',
+                    'errors' => ['current_password' => 'The current password is incorrect.']
+                ], 422);
+            }
+
+            // Update password
+            $user->update([
+                'password' => Hash::make($data['new_password'])
+            ]);
+
+            return response()->json([
+                'message' => 'Password changed successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Password change error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to change password',
+                'errors' => ['general' => 'Something went wrong during password change.']
             ], 500);
         }
     }
