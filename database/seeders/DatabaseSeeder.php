@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\Organization;
 use App\Models\Student;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,35 +17,40 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Seeding the organization
-        Organization::factory()->create([
-            'name' => 'University of Colombo School of Computing',
-            'description' => 'UCSC offers 5 Undergraduate degree programmes, 6 Masters degree programmes, 2 Research degree programmes and 1 External degree programme, plus a talented team of staff to help find what is right for you. Whatever your passion, we will put you on the path to success.',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // Seeding the organization (idempotent)
+        $org = Organization::firstOrCreate(
+            ['name' => 'University of Colombo School of Computing'],
+            [
+                'description' => 'UCSC offers 5 Undergraduate degree programmes, 6 Masters degree programmes, 2 Research degree programmes and 1 External degree programme, plus a talented team of staff to help find what is right for you. Whatever your passion, we will put you on the path to success.',
+            ]
+        );
 
         // First, seed the roles
         $this->call([
             RoleSeeder::class,
         ]);
 
-        // Create regular users and assign student role
-        $regularUsers = User::factory(10)->create();
-        foreach ($regularUsers as $user) {
-            $user->assignRole('student');
-        }
+        // Skip bulk random users to keep seed idempotent and avoid sequence drift
 
-        // Create test student user
-        $testStudent = User::factory()->create([
-            'name' => 'test student',
-            'email' => 'student@example.com',
-            'student_id' => Student::factory()->create([
+        // Create test student user (idempotent)
+        $testStudent = User::updateOrCreate(
+            ['email' => 'student@example.com'],
+            [
+                'name' => 'test student',
+                'password' => Hash::make('password'),
+            ]
+        );
+        if (!$testStudent->hasRole('student')) {
+            $testStudent->assignRole('student');
+        }
+        // Ensure Student profile exists
+        Student::firstOrCreate(
+            ['id' => $testStudent->id],
+            [
                 'local' => true,
-                'passport_nic' => '123456789V', // Example NIC number
-            ])->id
-        ]);
-        $testStudent->assignRole('student');
+                'passport_nic' => '123456789V',
+            ]
+        );
 
         // Create admin user
         $adminUser = User::factory()->create([
@@ -59,6 +66,18 @@ class DatabaseSeeder extends Seeder
         $adminUser->givePermissionTo($allPermissions);
 
         // Create org admin user
+        $orgAdminUser = User::updateOrCreate(
+            ['email' => 'orgadmin@example.com'],
+            [
+                'name' => 'Organization Admin',
+                'password' => Hash::make('password'),
+                'organization_id' => $org->id,
+            ]
+        );
+        if (!$orgAdminUser->hasRole('org_admin')) {
+            $orgAdminUser->assignRole('org_admin');
+        }
+        
         $orgAdminUser = User::factory()->create([
             'name' => 'Organization Admin',
             'email' => 'orgadmin@example.com',
@@ -102,5 +121,14 @@ class DatabaseSeeder extends Seeder
         $this->call([
             OrgExamSeeder::class,
         ]);
+
+        // Align PostgreSQL sequences to prevent duplicate key errors when factories ran previously
+        try {
+            DB::statement("SELECT setval(pg_get_serial_sequence('users','id'), COALESCE((SELECT MAX(id) FROM users), 1))");
+            DB::statement("SELECT setval(pg_get_serial_sequence('students','id'), COALESCE((SELECT MAX(id) FROM students), 1))");
+            DB::statement("SELECT setval(pg_get_serial_sequence('organizations','id'), COALESCE((SELECT MAX(id) FROM organizations), 1))");
+        } catch (\Throwable $e) {
+            // Ignore if not PostgreSQL or sequences not applicable
+        }
     }
 }
