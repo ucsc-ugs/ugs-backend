@@ -73,6 +73,12 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::post('/exam/{examId}/exam-dates', [ExamDateController::class, 'addDateToExam']);
     Route::post('/exam/{examId}/exam-dates/bulk', [ExamDateController::class, 'addMultipleDatesToExam']);
 
+    // Exam Results routes (Org Admin only)
+    Route::get('/exam-dates/{examDateId}/students', [ExamController::class, 'getExamDateStudents']);
+    Route::post('/exam-dates/{examDateId}/publish-results', [ExamController::class, 'publishExamResults']);
+    Route::get('/exam-dates/{examDateId}/published-results', [ExamController::class, 'getPublishedResults']);
+    Route::put('/exam-dates/{examDateId}/results/{resultId}', [ExamController::class, 'updatePublishedResult']);
+
     // Location routes
     Route::get('/locations', [LocationController::class, 'index']);
     Route::post('/locations', [LocationController::class, 'store']);
