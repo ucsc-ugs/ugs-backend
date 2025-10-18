@@ -29,7 +29,11 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
 Route::post('/login', [AuthController::class, 'authenticate']);
 Route::post('/register', [StudentController::class, 'register']);
 Route::get('/exams', [ExamController::class, 'publicIndex']); // Public exam listing for students
+
 Route::get('/exams/{code_name}', [ExamController::class, 'show']); // Public exam details for students
+
+Route::get('/exams/id/{id}', [\App\Http\Controllers\NotificationController::class, 'examDetails']); // Public exam details for students
+
 
 Route::post('/payment/notify', [PaymentController::class, 'notify'])->name('payment.notify');  // uses a public URL: https://6c8f55c58cf7.ngrok-free.app/payment/notify
 
@@ -43,35 +47,27 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Protected routes (requires authentication + email verification)
 Route::middleware(['auth:sanctum'])->group(function () {
-
-    // Profile maintenance
-    Route::get('/profile', [UserController::class, 'user']); // Same as /api/user endpoint
+    // ...existing code...
+    Route::get('/profile', [UserController::class, 'user']);
     Route::patch('/profile', [UserController::class, 'updateProfile']);
-    // Route::delete('/profile', [UserController::class, 'deleteProfile']);  // Not implemented yet
+    // Route::delete('/profile', [UserController::class, 'deleteProfile']);
     Route::put('/profile/password', [UserController::class, 'updatePassword']);
-
-    // manage complaints
     Route::get('/complaints', [ComplaintController::class, 'getComplaints']);
     Route::post('/complaints', [ComplaintController::class, 'createComplaint']);
     Route::get('/complaints/{id}', [ComplaintController::class, 'getComplaint']);
     Route::put('/complaints/{id}', [ComplaintController::class, 'updateComplaint']);
     Route::delete('/complaints/{id}', [ComplaintController::class, 'deleteComplaint']);
-
-    // Exam registrations and payments
     Route::post('/exam/register', [ExamController::class, 'regForExam']);
-
-    // Payment webhook
     Route::post('/payment/verify', [PaymentController::class, 'verify'])->name('payment.verify');
-
-    // manage announcements
     Route::post('/announcements', [AnnouncementController::class, 'store']);
     Route::get('/announcements', [AnnouncementController::class, 'index']);
     Route::put('/announcements/{id}', [AnnouncementController::class, 'update']);
     Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy']);
-
-    
     Route::get('/my-exams', [UserController::class, 'myExams']);
 });
+
+// Notifications for students (public)
+Route::get('/student/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
 
 // Email verification routes
 
@@ -99,4 +95,3 @@ Route::post('/email/verification-notification', function (Request $request) {
 
 // Add this outside any middleware group: (announcements should be public???)
 Route::get('/announcements', [AnnouncementController::class, 'index']);
-

@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Laravel\Pail\ValueObjects\Origin\Console;
+use Illuminate\Validation\Rule;
 
 class ExamController extends Controller
 {
@@ -82,6 +83,7 @@ class ExamController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'code_name' => 'required|string|max:255|unique:exams,code_name',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'organization_id' => 'required|exists:organizations,id',
@@ -110,6 +112,7 @@ class ExamController extends Controller
         // Create the exam
         $exam = Exam::create([
             'name' => $validated['name'],
+            'code_name' => $validated['code_name'],
             'description' => $validated['description'] ?? null,
             'price' => $validated['price'],
             'organization_id' => $validated['organization_id'],
@@ -171,6 +174,12 @@ class ExamController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
+            'code_name' => [
+                'sometimes',
+                'string',
+                'max:255',
+                Rule::unique('exams', 'code_name')->ignore($id) 
+            ],
             'description' => 'nullable|string',
             'price' => 'sometimes|numeric|min:0',
             'organization_id' => 'sometimes|exists:organizations,id',
@@ -183,6 +192,7 @@ class ExamController extends Controller
         // Update exam basic info
         $exam->update([
             'name' => $validated['name'] ?? $exam->name,
+            'code_name' => $validated['code_name'] ?? $exam->code_name,
             'description' => $validated['description'] ?? $exam->description,
             'price' => $validated['price'] ?? $exam->price,
             'organization_id' => $validated['organization_id'] ?? $exam->organization_id,
