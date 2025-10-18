@@ -64,6 +64,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/announcements/{id}', [AnnouncementController::class, 'update']);
     Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy']);
     Route::get('/my-exams', [UserController::class, 'myExams']);
+    Route::post('/reschedule-exam', [UserController::class, 'rescheduleExam']);
 });
 
 // Notifications for students (public)

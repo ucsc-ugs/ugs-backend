@@ -40,4 +40,12 @@ class Organization extends Model
     {
         return $this->hasMany(Exam::class);
     }
+
+    /**
+     * An organization can have many locations
+     */
+    public function locations()
+    {
+        return $this->hasMany(Location::class);
+    }
 }
