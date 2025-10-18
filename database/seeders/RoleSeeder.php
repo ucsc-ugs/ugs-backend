@@ -54,6 +54,9 @@ class RoleSeeder extends Seeder
             'exam.notification.send',
             'exam.change.notify',
 
+            # Exam locations
+            'exam.location.manage',
+
             # Finance management permissions (CRUD + payments)
             'finance.create',
             'finance.view',
@@ -103,6 +106,7 @@ class RoleSeeder extends Seeder
             'exam.schedule.update',
             'exam.registration.deadline.set',
             'exam.registration.deadline.extend',
+            'exam.location.manage',
 
             'payments.view',
             'payments.create',

@@ -191,6 +191,7 @@ class SuperAdminController extends Controller
                 'exam.schedule.update',
                 'exam.registration.deadline.set',
                 'exam.registration.deadline.extend',
+                'exam.location.manage',
                 'payments.view',
                 'payments.create',
                 'payments.update',
