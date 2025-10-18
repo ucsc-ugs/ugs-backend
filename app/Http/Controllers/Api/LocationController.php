@@ -43,13 +43,6 @@ class LocationController extends Controller
                 ->get();
         }
 
-        // Add current registration count to each location
-        $locations = $locations->map(function ($location) {
-            $location->current_registrations = $location->getCurrentRegistrationCount();
-            $location->available_capacity = $location->capacity - $location->current_registrations;
-            return $location;
-        });
-
         return response()->json([
             'message' => 'Locations retrieved successfully',
             'data' => $locations
@@ -187,16 +180,6 @@ class LocationController extends Controller
             'capacity' => 'sometimes|integer|min:1',
         ]);
 
-        // Ensure capacity is not reduced below current registrations
-        if (isset($validated['capacity'])) {
-            $currentRegistrations = $location->getCurrentRegistrationCount();
-            if ($validated['capacity'] < $currentRegistrations) {
-                return response()->json([
-                    'message' => "Cannot reduce capacity below current registrations ({$currentRegistrations})"
-                ], 400);
-            }
-        }
-
         $location->update($validated);
         $location->load('organization');
 
@@ -282,13 +265,6 @@ class LocationController extends Controller
         $locations = Location::where('organization_id', $organizationId)
             ->with(['organization'])
             ->get();
-
-        // Add current registration count to each location
-        $locations = $locations->map(function ($location) {
-            $location->current_registrations = $location->getCurrentRegistrationCount();
-            $location->available_capacity = $location->capacity - $location->current_registrations;
-            return $location;
-        });
 
         return response()->json([
             'message' => 'Locations retrieved successfully',
