@@ -11,6 +11,10 @@ use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+
+// Mark announcement as read (protected route)
+Route::middleware('auth:sanctum')->post('/announcements/mark-as-read', [\App\Http\Controllers\AnnouncementReadController::class, 'markAsRead']);
+
 // API Admin Routes
 Route::prefix('admin')->group(base_path('routes/api_admin.php'));
 
@@ -69,6 +73,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 // Notifications for students (public)
 Route::get('/student/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
+
+// General notifications endpoints (authenticated)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/general-notifications', [\App\Http\Controllers\GeneralNotificationController::class, 'index']);
+    Route::post('/general-notifications/{id}/mark-as-read', [\App\Http\Controllers\GeneralNotificationController::class, 'markAsRead']);
+    Route::post('/general-notifications/mark-all-as-read', [\App\Http\Controllers\GeneralNotificationController::class, 'markAllAsRead']);
+});
 
 // Email verification routes
 

@@ -8,6 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class Student extends Model
 {
     use HasFactory;
+    // ...existing code...
+    public function announcementReads()
+    {
+        return $this->hasMany(AnnouncementRead::class);
+    }
 
     protected $fillable = [
         'local',
