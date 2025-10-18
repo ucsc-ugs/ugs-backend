@@ -13,7 +13,9 @@ return new class extends Migration
     {
         Schema::create('locations', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+            $table->foreignId('organization_id')->constrained('organizations')->onDelete('cascade');
+            $table->string('location_name');
+            $table->integer('capacity');
         });
     }
 
