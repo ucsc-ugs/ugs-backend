@@ -21,8 +21,8 @@ class StudentExamResource extends JsonResource
             'result' => $this->result,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            'exam' => new ExamResource($this->whenLoaded('exam')),
-            'payment' => new PaymentResource($this->whenLoaded('payment')),
+            //'exam' => new ExamResource($this->whenLoaded('exam')),
+            //'payment' => new PaymentResource($this->whenLoaded('payment')),
         ];
     }
 }

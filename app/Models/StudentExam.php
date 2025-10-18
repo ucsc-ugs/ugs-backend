@@ -10,6 +10,8 @@ class StudentExam extends Model
         'index_number',
         'student_id',
         'exam_id',
+        'selected_exam_date_id',
+        'assigned_location_id',
         'payment_id',
         'status',
         'attended',
@@ -24,6 +26,16 @@ class StudentExam extends Model
     public function exam()
     {
         return $this->belongsTo(Exam::class);
+    }
+
+    public function selectedExamDate()
+    {
+        return $this->belongsTo(ExamDate::class, 'selected_exam_date_id');
+    }
+
+    public function assignedLocation()
+    {
+        return $this->belongsTo(Location::class, 'assigned_location_id');
     }
 
     public function payment()

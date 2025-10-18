@@ -44,5 +44,11 @@ class Organization extends Model
     public function revenueTransactions(): HasMany
     {
         return $this->hasMany(RevenueTransaction::class);
+    /**
+     * An organization can have many locations
+     */
+    public function locations()
+    {
+        return $this->hasMany(Location::class);
     }
 }

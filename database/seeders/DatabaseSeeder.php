@@ -66,6 +66,7 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             OrgExamSeeder::class,
+            NotificationSeeder::class,
         ]);
     }
 }
