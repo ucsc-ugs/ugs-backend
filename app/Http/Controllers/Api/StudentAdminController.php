@@ -26,12 +26,12 @@ class StudentAdminController extends Controller
             ->with(['student', 'organization']);
 
         if (!$isSuper) {
-            $orgAdmin = $user->orgAdmin;
-            if (!$orgAdmin) {
+            //$orgAdmin = $user->orgAdmin;
+            if (!$user->hasRole('org_admin')) {
                 return response()->json(['message' => 'Unauthorized. Organization admin access required.'], 403);
             }
 
-            $orgId = $orgAdmin->organization_id;
+            $orgId = $user->organization_id;
 
             // Only include students who have PAID registrations for exams of this organization
             $query->whereExists(function ($q) use ($orgId) {
