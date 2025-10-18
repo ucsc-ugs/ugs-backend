@@ -37,7 +37,7 @@ class AuthController extends Controller
                     ], 403);
                 }
 
-                $userResource = UserResource::make($user)->toArray($request);
+                $userResource = UserResource::make($user)->toArray($request) ;
                 return response()->json([
                     'message' => 'Admin login successful',
                     'token' => $token,

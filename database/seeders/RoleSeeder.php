@@ -83,6 +83,13 @@ class RoleSeeder extends Seeder
 
         // Org admin: allow viewing and managing students, exams and payments within their org
         $orgAdminRole->givePermissionTo([
+            'organization.view',
+            'organization.update',
+            'organization.admins.create',
+            'organization.admins.view',
+            'organization.admins.update',
+            'organization.admins.delete',
+
             'student.create',
             'student.view',
             'student.update',
