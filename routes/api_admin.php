@@ -50,6 +50,9 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::put('/my-organization', [OrgAdminController::class, 'updateMyOrganization']);
     Route::post('/my-organization/logo', [OrgAdminController::class, 'uploadOrganizationLogo']);
 
+    // User Account Management
+    Route::put('/change-password', [OrgAdminController::class, 'changePassword']);
+
 
 
     // Exam routes (token authentication required)
@@ -92,6 +95,15 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
             'org_admin' => $user->orgAdmin,
             'is_org_admin' => $user->hasRole('org_admin'),
             'is_super_admin' => $user->hasRole('super_admin')
+        ]);
+    });
+
+    // Test route to debug CORS and authentication
+    Route::get('/debug/test', function (Request $request) {
+        return response()->json([
+            'message' => 'Authentication working',
+            'user' => $request->user()?->only(['id', 'name', 'email']),
+            'timestamp' => now()
         ]);
     });
 

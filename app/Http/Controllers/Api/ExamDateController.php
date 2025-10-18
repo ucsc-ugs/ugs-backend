@@ -7,6 +7,7 @@ use App\Models\ExamDate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class ExamDateController extends Controller
@@ -354,6 +355,13 @@ class ExamDateController extends Controller
         }
 
         try {
+            // Log incoming request data for debugging
+            \Illuminate\Support\Facades\Log::info('Exam date update request received', [
+                'exam_date_id' => $id,
+                'user_id' => $user->id,
+                'request_data' => $request->all()
+            ]);
+
             $examDate = ExamDate::with('exam', 'locations')->findOrFail($id);
 
             // For org_admin, ensure they can only update exam dates for their organization
@@ -371,7 +379,7 @@ class ExamDateController extends Controller
             // Validate request
             $request->validate([
                 'date' => 'required|date|after:now',
-                'registration_deadline' => 'nullable|date|after:now|before:date',
+                'registration_deadline' => 'nullable|date|before:date',
                 'location_ids' => 'required|array|min:1',
                 'location_ids.*' => 'integer|exists:locations,id',
             ]);
@@ -390,22 +398,30 @@ class ExamDateController extends Controller
                 ], 422);
             }
 
-            // Update exam date basic details
-            $examDate->update([
-                'date' => $request->date,
-                'registration_deadline' => $request->registration_deadline,
-            ]);
-
-            // Update location relationships
-            $examDate->locations()->detach(); // Remove existing relationships
-
-            // Add new location relationships with priority
-            foreach ($locationIds as $index => $locationId) {
-                $examDate->locations()->attach($locationId, [
-                    'priority' => $index + 1,
-                    'current_registrations' => 0 // Reset registrations for new setup
+            // Update exam date basic details and location relationships in a transaction
+            \Illuminate\Support\Facades\DB::transaction(function () use ($examDate, $request, $locationIds) {
+                // Update exam date basic details (only date, not registration_deadline)
+                $examDate->update([
+                    'date' => $request->date,
                 ]);
-            }
+
+                // If registration_deadline is provided, update it in the exam table (not exam_dates)
+                if ($request->has('registration_deadline') && $request->registration_deadline) {
+                    $examDate->exam->update([
+                        'registration_deadline' => $request->registration_deadline,
+                    ]);
+                }
+
+                // Update location relationships
+                $examDate->locations()->detach(); // Remove existing relationships
+
+                // Add new location relationships with priority
+                foreach ($locationIds as $index => $locationId) {
+                    $examDate->locations()->attach($locationId, [
+                        'priority' => $index + 1
+                    ]);
+                }
+            });
 
             \Illuminate\Support\Facades\Log::info('Exam date updated successfully', [
                 'exam_date_id' => $examDate->id,
@@ -422,15 +438,36 @@ class ExamDateController extends Controller
                 'message' => 'Exam date not found'
             ], 404);
         } catch (\Illuminate\Validation\ValidationException $e) {
+            \Illuminate\Support\Facades\Log::error('Validation failed for exam date update', [
+                'exam_date_id' => $id,
+                'user_id' => $user->id,
+                'validation_errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+
             return response()->json([
                 'message' => 'Validation failed',
                 'errors' => $e->errors()
             ], 422);
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Illuminate\Support\Facades\Log::error('Database error during exam date update', [
+                'exam_date_id' => $id,
+                'user_id' => $user->id,
+                'sql_error' => $e->getMessage(),
+                'sql_code' => $e->getCode(),
+                'request_data' => $request->all()
+            ]);
+
+            return response()->json([
+                'message' => 'Database error occurred',
+                'error' => 'Failed to update exam date due to database constraints'
+            ], 500);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Failed to update exam date: ' . $e->getMessage(), [
                 'exam_date_id' => $id,
                 'user_id' => $user->id,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
             ]);
 
             return response()->json([
