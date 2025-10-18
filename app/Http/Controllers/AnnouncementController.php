@@ -24,8 +24,20 @@ class AnnouncementController extends Controller
             $announcement->save();
         }
 
-        // Return all announcements, no user filter
-        return response()->json(\App\Models\Announcement::all());
+        // Return all announcements with exam details
+        $announcements = \App\Models\Announcement::with('exam:id,name,code_name')->get();
+
+        // Transform to include exam details
+        $announcements = $announcements->map(function ($announcement) {
+            $data = $announcement->toArray();
+            if ($announcement->exam) {
+                $data['exam_name'] = $announcement->exam->name;
+                $data['exam_code'] = $announcement->exam->code_name;
+            }
+            return $data;
+        });
+
+        return response()->json($announcements);
     }
 
     public function store(Request $request)

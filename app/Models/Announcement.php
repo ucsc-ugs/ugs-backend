@@ -11,6 +11,12 @@ class Announcement extends Model
     {
         return $this->hasMany(AnnouncementRead::class);
     }
+
+    public function exam()
+    {
+        return $this->belongsTo(Exam::class);
+    }
+
     protected $fillable = [
         'title',
         'message',
