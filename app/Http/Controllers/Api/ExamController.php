@@ -591,4 +591,298 @@ class ExamController extends Controller
         ]);
     }
 
+    /**
+     * Get students registered for a specific exam date
+     */
+    public function getExamDateStudents(Request $request, $examDateId): JsonResponse
+    {
+        $user = $request->user();
+        $user->load('orgAdmin');
+
+        if (!$user->hasRole('org_admin')) {
+            return response()->json([
+                'message' => 'Unauthorized. Org admin access required.'
+            ], 403);
+        }
+
+        $organizationId = $user->organization_id ?? $user->orgAdmin?->organization_id;
+
+        if (!$organizationId) {
+            return response()->json([
+                'message' => 'No organization found for this user'
+            ], 404);
+        }
+
+        // Verify the exam date belongs to the org admin's organization
+        $examDate = ExamDate::with(['exam', 'studentExams.student'])
+            ->whereHas('exam', function ($query) use ($organizationId) {
+                $query->where('organization_id', $organizationId);
+            })
+            ->find($examDateId);
+
+        if (!$examDate) {
+            return response()->json([
+                'message' => 'Exam date not found or access denied'
+            ], 404);
+        }
+
+        $students = $examDate->studentExams->map(function ($studentExam) {
+            return [
+                'id' => $studentExam->id,
+                'index_number' => $studentExam->index_number,
+                'student_id' => $studentExam->student_id,
+                'student_name' => $studentExam->student->name ?? 'Unknown',
+                'status' => $studentExam->status,
+                'attended' => $studentExam->attended,
+                'result' => $studentExam->result,
+                'selected_exam_date_id' => $studentExam->selected_exam_date_id,
+                'assigned_location_id' => $studentExam->assigned_location_id
+            ];
+        });
+
+        return response()->json([
+            'message' => 'Students retrieved successfully',
+            'data' => [
+                'exam_date' => $examDate,
+                'students' => $students
+            ]
+        ]);
+    }
+
+    /**
+     * Publish exam results for a specific exam date
+     */
+    public function publishExamResults(Request $request, $examDateId): JsonResponse
+    {
+        $user = $request->user();
+        $user->load('orgAdmin');
+
+        if (!$user->hasRole('org_admin')) {
+            return response()->json([
+                'message' => 'Unauthorized. Org admin access required.'
+            ], 403);
+        }
+
+        $organizationId = $user->organization_id ?? $user->orgAdmin?->organization_id;
+
+        if (!$organizationId) {
+            return response()->json([
+                'message' => 'No organization found for this user'
+            ], 404);
+        }
+
+        // Validate request
+        $request->validate([
+            'results' => 'required|array',
+            'results.*.index_number' => 'required|string',
+            'results.*.result' => 'required|string',
+            'results.*.attended' => 'required|boolean'
+        ]);
+
+        // Verify the exam date belongs to the org admin's organization
+        $examDate = ExamDate::with(['exam'])
+            ->whereHas('exam', function ($query) use ($organizationId) {
+                $query->where('organization_id', $organizationId);
+            })
+            ->find($examDateId);
+
+        if (!$examDate) {
+            return response()->json([
+                'message' => 'Exam date not found or access denied'
+            ], 404);
+        }
+
+        try {
+            $updatedCount = 0;
+            $errors = [];
+
+            foreach ($request->results as $resultData) {
+                $studentExam = StudentExam::where('exam_id', $examDate->exam_id)
+                    ->where('index_number', $resultData['index_number'])
+                    ->where('selected_exam_date_id', $examDateId)
+                    ->first();
+
+                if ($studentExam) {
+                    $studentExam->update([
+                        'result' => $resultData['result'],
+                        'attended' => $resultData['attended']
+                    ]);
+                    $updatedCount++;
+                } else {
+                    $errors[] = "Student with index number {$resultData['index_number']} not found for this exam date";
+                }
+            }
+
+            return response()->json([
+                'message' => 'Results published successfully',
+                'data' => [
+                    'updated_count' => $updatedCount,
+                    'total_results' => count($request->results),
+                    'errors' => $errors
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to publish exam results: ' . $e->getMessage(), [
+                'exam_date_id' => $examDateId,
+                'user_id' => $user->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to publish results',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get published results for a specific exam date (for editing)
+     */
+    public function getPublishedResults(Request $request, $examDateId): JsonResponse
+    {
+        $user = $request->user();
+        $user->load('orgAdmin');
+
+        if (!$user->hasRole('org_admin')) {
+            return response()->json([
+                'message' => 'Unauthorized. Org admin access required.'
+            ], 403);
+        }
+
+        $organizationId = $user->organization_id ?? $user->orgAdmin?->organization_id;
+
+        if (!$organizationId) {
+            return response()->json([
+                'message' => 'No organization found for this user'
+            ], 404);
+        }
+
+        // Verify the exam date belongs to the org admin's organization
+        $examDate = ExamDate::with(['exam'])
+            ->whereHas('exam', function ($query) use ($organizationId) {
+                $query->where('organization_id', $organizationId);
+            })
+            ->find($examDateId);
+
+        if (!$examDate) {
+            return response()->json([
+                'message' => 'Exam date not found or access denied'
+            ], 404);
+        }
+
+        // Get all student exams with published results for this exam date
+        $studentExams = StudentExam::with(['student'])
+            ->where('exam_id', $examDate->exam_id)
+            ->where('selected_exam_date_id', $examDateId)
+            ->whereNotNull('result')
+            ->get();
+
+        $results = $studentExams->map(function ($studentExam) {
+            return [
+                'id' => $studentExam->id,
+                'index_number' => $studentExam->index_number,
+                'student_id' => $studentExam->student_id,
+                'student_name' => $studentExam->student->name ?? 'Unknown',
+                'result' => $studentExam->result,
+                'attended' => $studentExam->attended,
+                'status' => $studentExam->status,
+                'updated_at' => $studentExam->updated_at
+            ];
+        });
+
+        return response()->json([
+            'message' => 'Published results retrieved successfully',
+            'data' => [
+                'exam_date' => $examDate,
+                'results' => $results
+            ]
+        ]);
+    }
+
+    /**
+     * Update a single published result
+     */
+    public function updatePublishedResult(Request $request, $examDateId, $resultId): JsonResponse
+    {
+        $user = $request->user();
+        $user->load('orgAdmin');
+
+        if (!$user->hasRole('org_admin')) {
+            return response()->json([
+                'message' => 'Unauthorized. Org admin access required.'
+            ], 403);
+        }
+
+        $organizationId = $user->organization_id ?? $user->orgAdmin?->organization_id;
+
+        if (!$organizationId) {
+            return response()->json([
+                'message' => 'No organization found for this user'
+            ], 404);
+        }
+
+        // Validate request
+        $request->validate([
+            'result' => 'required|string',
+            'attended' => 'required|boolean'
+        ]);
+
+        // Verify the exam date belongs to the org admin's organization
+        $examDate = ExamDate::with(['exam'])
+            ->whereHas('exam', function ($query) use ($organizationId) {
+                $query->where('organization_id', $organizationId);
+            })
+            ->find($examDateId);
+
+        if (!$examDate) {
+            return response()->json([
+                'message' => 'Exam date not found or access denied'
+            ], 404);
+        }
+
+        // Find the specific student exam result
+        $studentExam = StudentExam::where('exam_id', $examDate->exam_id)
+            ->where('selected_exam_date_id', $examDateId)
+            ->where('id', $resultId)
+            ->first();
+
+        if (!$studentExam) {
+            return response()->json([
+                'message' => 'Result not found or access denied'
+            ], 404);
+        }
+
+        try {
+            $studentExam->update([
+                'result' => $request->result,
+                'attended' => $request->attended
+            ]);
+
+            return response()->json([
+                'message' => 'Result updated successfully',
+                'data' => [
+                    'id' => $studentExam->id,
+                    'index_number' => $studentExam->index_number,
+                    'result' => $studentExam->result,
+                    'attended' => $studentExam->attended,
+                    'updated_at' => $studentExam->updated_at
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to update published result: ' . $e->getMessage(), [
+                'exam_date_id' => $examDateId,
+                'result_id' => $resultId,
+                'user_id' => $user->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to update result',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 }
