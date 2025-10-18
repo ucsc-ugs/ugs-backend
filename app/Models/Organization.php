@@ -40,4 +40,9 @@ class Organization extends Model
     {
         return $this->hasMany(Exam::class);
     }
+
+    public function revenueTransactions(): HasMany
+    {
+        return $this->hasMany(RevenueTransaction::class);
+    }
 }

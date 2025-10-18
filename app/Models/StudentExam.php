@@ -30,4 +30,9 @@ class StudentExam extends Model
     {
         return $this->hasOne(Payment::class);
     }
+
+    public function revenueTransaction(): HasOne
+    {
+        return $this->hasOne(RevenueTransaction::class);
+    }
 }

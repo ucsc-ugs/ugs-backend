@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 
 // Super Admin Authentication (Public)
 Route::post('/login', [AuthController::class, 'authenticate']);
+Route::get('/revenue', [SuperAdminController::class, 'dashboard']);
 
 // Protected routes (requires authentication)
 Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(function () {
