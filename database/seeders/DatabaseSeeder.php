@@ -53,7 +53,7 @@ class DatabaseSeeder extends Seeder
             'user_type' => 'super-admin'
         ]);
         $adminUser->assignRole('super_admin');
-        
+
         // Give all permissions to super admin
         $allPermissions = \Spatie\Permission\Models\Permission::all();
         $adminUser->givePermissionTo($allPermissions);
@@ -67,7 +67,7 @@ class DatabaseSeeder extends Seeder
             'organization_id' => Organization::where('name', 'University of Colombo School of Computing')->first()->id
         ]);
         $orgAdminUser->assignRole('org_admin');
-        
+
         // Give org admin specific permissions
         $orgAdminPermissions = [
             'organization.view',
@@ -101,7 +101,6 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             OrgExamSeeder::class,
-            NotificationSeeder::class,
         ]);
     }
 }
