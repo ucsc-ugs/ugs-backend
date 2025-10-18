@@ -68,6 +68,34 @@ class FinanceController extends Controller
 
         $rows = $query->get();
 
+        // Compute distinct student counts (overall, not per-exam) for the same filters
+        $studentBase = DB::table('student_exams')
+            ->join('exams', 'exams.id', '=', 'student_exams.exam_id')
+            ->leftJoin('payments', 'payments.student_exam_id', '=', 'student_exams.id')
+            ->when(!$isSuper && $orgId, function ($q) use ($orgId) {
+                $q->where('exams.organization_id', $orgId);
+            })
+            ->when($examId, function ($q) use ($examId) {
+                $q->where('exams.id', $examId);
+            })
+            ->when($month, function ($q) use ($month) {
+                $q->whereRaw("to_char(student_exams.created_at, 'YYYY-MM') = ?", [$month]);
+            });
+
+        // Total unique students in the filtered scope
+        $totalUniqueStudents = (clone $studentBase)
+            ->distinct('student_exams.student_id')
+            ->count('student_exams.student_id');
+
+        // Unique students who have at least one paid registration in the filtered scope
+        $paidUniqueStudents = (clone $studentBase)
+            ->where('payments.status_code', 2)
+            ->distinct('student_exams.student_id')
+            ->count('student_exams.student_id');
+
+        // Unique unpaid students = students without any paid registration in the filtered scope
+        $unpaidUniqueStudents = max(0, $totalUniqueStudents - $paidUniqueStudents);
+
         $data = $rows->map(function ($r) {
             $totalRevenue = (float)$r->paid_revenue + ((float)$r->exam_fee * (int)$r->unpaid_registrations);
             $unpaidRevenue = (float)$totalRevenue - (float)$r->paid_revenue;
@@ -89,6 +117,13 @@ class FinanceController extends Controller
         return response()->json([
             'message' => 'Finance overview',
             'data' => $data,
+            'meta' => [
+                'totals' => [
+                    'uniqueStudents' => (int)$totalUniqueStudents,
+                    'uniquePaidStudents' => (int)$paidUniqueStudents,
+                    'uniqueUnpaidStudents' => (int)$unpaidUniqueStudents,
+                ],
+            ],
         ]);
     }
 }
