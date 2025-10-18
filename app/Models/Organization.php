@@ -41,9 +41,11 @@ class Organization extends Model
         return $this->hasMany(Exam::class);
     }
 
-    public function revenueTransactions(): HasMany
+    public function revenueTransactions()
     {
         return $this->hasMany(RevenueTransaction::class);
+    }
+
     /**
      * An organization can have many locations
      */

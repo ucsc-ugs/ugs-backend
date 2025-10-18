@@ -121,19 +121,5 @@ class RoleSeeder extends Seeder
             'announcement.view',
             'payments.view',
         ]);
-
-        // Create default super admin if none exists
-        $superAdmin = User::role('super_admin')->first();
-        if (!$superAdmin) {
-            $superAdmin = User::create([
-                'name' => 'Super Admin',
-                'email' => 'admin@ugs.com',
-                'password' => Hash::make('admin123'),
-            ]);
-
-            $superAdmin->assignRole('super_admin');
-
-            $this->command->info('Default super admin created: admin@ugs.com / admin123');
-        }
     }
 }
