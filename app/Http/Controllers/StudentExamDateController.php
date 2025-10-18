@@ -22,40 +22,39 @@ class StudentExamDateController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 401);
             }
 
-            // Get student's registered exams (pending or registered status)
-            $studentExams = StudentExam::where('student_id', $user->id)
-                ->whereIn('status', ['pending', 'registered', 'approved'])
-                ->pluck('exam_id');
-
-            if ($studentExams->isEmpty()) {
-                return response()->json([]);
-            }
-
-            // Get exam dates for those exams with exam details
-            $examDates = DB::table('exam_dates')
+            // Get student's registered exams with their selected exam date IDs and assigned locations
+            $examDates = DB::table('student_exams')
+                ->where('student_exams.student_id', $user->id)
+                ->whereIn('student_exams.status', ['pending', 'registered', 'approved'])
+                ->whereNotNull('student_exams.selected_exam_date_id')
+                ->join('exam_dates', 'student_exams.selected_exam_date_id', '=', 'exam_dates.id')
                 ->join('exams', 'exam_dates.exam_id', '=', 'exams.id')
-                ->whereIn('exam_dates.exam_id', $studentExams)
+                ->leftJoin('locations', 'student_exams.assigned_location_id', '=', 'locations.id')
                 ->select(
                     'exam_dates.id',
                     'exam_dates.exam_id',
                     'exam_dates.date',
-                    'exam_dates.location',
                     'exam_dates.status',
                     'exams.name as exam_title',
-                    'exams.code_name as exam_code'
+                    'exams.code_name as exam_code',
+                    'locations.location_name as location',
+                    'exam_dates.location as fallback_location'
                 )
                 ->orderBy('exam_dates.date', 'asc')
                 ->get();
 
             // Format the response
             $formattedDates = $examDates->map(function ($examDate) {
+                // Use assigned location if available, otherwise use exam_dates location
+                $location = $examDate->location ?: ($examDate->fallback_location ?: 'Location not assigned');
+
                 return [
                     'id' => $examDate->id,
                     'exam_id' => $examDate->exam_id,
                     'exam_title' => $examDate->exam_title,
                     'exam_code' => $examDate->exam_code,
                     'date' => $examDate->date,
-                    'location' => $examDate->location,
+                    'location' => $location,
                     'status' => $examDate->status,
                 ];
             });
