@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ExamDate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class ExamDateController extends Controller
@@ -731,5 +732,51 @@ class ExamDateController extends Controller
         $hallName = preg_replace('/[^A-Za-z0-9\-_]/', '', $location->location_name);
 
         return $examCode . '_' . $date . '_' . $hallName . '_StudentList';
+    }
+
+    /**
+     * Delete an exam date
+     */
+    public function destroy(Request $request, $id)
+    {
+        try {
+            $examDate = ExamDate::findOrFail($id);
+
+            // Check organization access
+            $user = $request->user();
+            if ($user->hasRole('orgAdmin')) {
+                $user->load('orgAdmin');
+                $organizationId = $user->organization_id ?? $user->orgAdmin?->organization_id;
+
+                if (!$organizationId || $examDate->exam->organization_id !== $organizationId) {
+                    return response()->json([
+                        'message' => 'Unauthorized. You can only delete exam dates from your organization.'
+                    ], 403);
+                }
+            }
+
+            // Check if there are any registrations for this exam date
+            if ($examDate->studentExams()->count() > 0) {
+                return response()->json([
+                    'message' => 'Cannot delete exam date. Students are already registered for this date.'
+                ], 400);
+            }
+
+            // Delete the exam date
+            $examDate->delete();
+
+            return response()->json([
+                'message' => 'Exam date deleted successfully.'
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Exam date not found.'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error deleting exam date: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to delete exam date.'
+            ], 500);
+        }
     }
 }
