@@ -3,11 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\CreateStudentUserRequest;
 use App\Http\Resources\UserResource;
-use Illuminate\Support\Facades\Auth;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -45,7 +42,7 @@ class StudentController extends Controller
             $user->assignRole('student');
 
             // Send email verification notification
-            // $user->sendEmailVerificationNotification();
+            $user->sendEmailVerificationNotification();
 
             // Create token
             $token = $user->createToken('auth-token')->plainTextToken;
