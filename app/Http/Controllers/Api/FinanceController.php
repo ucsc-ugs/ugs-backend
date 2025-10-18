@@ -43,6 +43,10 @@ class FinanceController extends Controller
             ->when($examId, function ($q) use ($examId) {
                 $q->where('exams.id', $examId);
             })
+            // Month filter: use registration month (student_exams.created_at) in YYYY-MM
+            ->when($month, function ($q) use ($month) {
+                $q->whereRaw("to_char(student_exams.created_at, 'YYYY-MM') = ?", [$month]);
+            })
             ->groupBy('exams.id', 'exams.name', 'exams.price', 'organizations.name', 'exams.registration_deadline');
 
         // Aggregates
@@ -60,10 +64,7 @@ class FinanceController extends Controller
             DB::raw('COALESCE(SUM(CASE WHEN payments.status_code = 2 THEN COALESCE(payments.payhere_amount, exams.price) ELSE 0 END), 0) as paid_revenue'),
         ]);
 
-        // Month filter (YYYY-MM) applied via HAVING using to_char on exam_date
-        if ($month) {
-            $query->havingRaw("to_char(COALESCE(MIN(exam_dates.date), exams.registration_deadline), 'YYYY-MM') = ?", [$month]);
-        }
+        // Note: Month filter now applies to student_exams.created_at (registration month).
 
         $rows = $query->get();
 
