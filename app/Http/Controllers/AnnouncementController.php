@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+
 use Illuminate\Http\Request;
 use App\Models\Announcement;
 use Illuminate\Support\Facades\Artisan;
+use App\Traits\CreatesNotifications;
 
 class AnnouncementController extends Controller
 {
+    use CreatesNotifications;
     public function index()
     {
         // Update scheduled announcements whose publish_date has passed
@@ -45,6 +48,15 @@ class AnnouncementController extends Controller
             ]);
 
             $announcement = Announcement::create($validated);
+
+            // Create a notification for the new announcement
+            $this->createNotification(
+                $announcement->title,
+                $announcement->message,
+                $announcement->exam_id ?? null,
+                null,
+                ($announcement->audience === 'all')
+            );
 
             // Immediately trigger the scheduled command after creation
             Artisan::call('announcements:publish-scheduled');

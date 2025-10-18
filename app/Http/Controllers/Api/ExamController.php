@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamDate;
+use App\Models\ExamDateLocation;
+use App\Models\Location;
 use App\Models\StudentExam;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Laravel\Pail\ValueObjects\Origin\Console;
+use Illuminate\Validation\Rule;
 
 class ExamController extends Controller
 {
@@ -19,7 +22,7 @@ class ExamController extends Controller
      */
     public function publicIndex(): JsonResponse
     {
-        $exams = Exam::with(['organization', 'examDates'])
+        $exams = Exam::with(['organization', 'examDates.locations'])
             ->where('created_at', '<=', now()) // Only show created exams
             ->get();
 
@@ -36,6 +39,7 @@ class ExamController extends Controller
     {
         // Check if user has required roles
         $user = $request->user();
+        $user->load('orgAdmin'); // Load the orgAdmin relationship
 
         if (!$user->hasAnyRole(['super_admin', 'org_admin'])) {
             return response()->json([
@@ -45,24 +49,46 @@ class ExamController extends Controller
 
         // Super admin can see all exams
         if ($user->hasRole('super_admin')) {
-            $exams = Exam::with(['organization', 'examDates'])->get();
+            $exams = Exam::with(['organization', 'examDates.locations', 'examDates.studentExams'])->get();
         }
         // Org admin can only see exams related to their organization
         elseif ($user->hasRole('org_admin')) {
-            // Get organization_id directly from user
-            if (!$user->organization_id) {
+            // Get organization_id from user's organization_id or orgAdmin relationship
+            $organizationId = $user->organization_id ?? $user->orgAdmin?->organization_id;
+
+            if (!$organizationId) {
                 return response()->json([
                     'message' => 'No organization found for this user'
                 ], 404);
             }
-            $exams = Exam::with(['organization', 'examDates'])
-                ->where('organization_id', $user->organization_id)
+
+            $exams = Exam::with(['organization', 'examDates.locations', 'examDates.studentExams'])
+                ->where('organization_id', $organizationId)
                 ->get();
         }
 
+        // Transform the data to include registration counts and max participants
+        $transformedExams = $exams->map(function ($exam) {
+            $exam->examDates = $exam->examDates->map(function ($examDate) {
+                // Calculate total capacity from all locations
+                $maxParticipants = $examDate->locations->sum('capacity');
+
+                // Count current registrations for this exam date
+                $currentRegistrations = $examDate->studentExams->count();
+
+                // Add the calculated values to the exam date
+                $examDate->max_participants = $maxParticipants;
+                $examDate->current_registrations = $currentRegistrations;
+
+                return $examDate;
+            });
+
+            return $exam;
+        });
+
         return response()->json([
             'message' => 'Exams retrieved successfully',
-            'data' => $exams
+            'data' => $transformedExams
         ]);
     }
 
@@ -82,13 +108,17 @@ class ExamController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'code_name' => 'required|string|max:255|unique:exams,code_name',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'organization_id' => 'required|exists:organizations,id',
             'registration_deadline' => 'nullable|date',
             'exam_dates' => 'nullable|array',
             'exam_dates.*.date' => 'required|date_format:Y-m-d\TH:i',
-            'exam_dates.*.location' => 'nullable|string|max:255'
+            'exam_dates.*.location' => 'nullable|string|max:255',
+            'exam_dates.*.location_id' => 'nullable|exists:locations,id',
+            'exam_dates.*.location_ids' => 'nullable|array',
+            'exam_dates.*.location_ids.*' => 'exists:locations,id'
         ]);
 
         // For org_admin, ensure they can only create exams for their organization
@@ -110,6 +140,7 @@ class ExamController extends Controller
         // Create the exam
         $exam = Exam::create([
             'name' => $validated['name'],
+            'code_name' => $validated['code_name'],
             'description' => $validated['description'] ?? null,
             'price' => $validated['price'],
             'organization_id' => $validated['organization_id'],
@@ -118,17 +149,38 @@ class ExamController extends Controller
 
         // Create exam dates if provided
         if (!empty($validated['exam_dates'])) {
-            foreach ($validated['exam_dates'] as $examDate) {
-                ExamDate::create([
+            foreach ($validated['exam_dates'] as $examDateData) {
+                $examDate = ExamDate::create([
                     'exam_id' => $exam->id,
-                    'date' => $examDate['date'],
-                    'location' => $examDate['location'] ?? null
+                    'date' => $examDateData['date'],
+                    'location' => $examDateData['location'] ?? null,
+                    'location_id' => $examDateData['location_id'] ?? null
                 ]);
+
+                // Handle multiple locations
+                if (!empty($examDateData['location_ids'])) {
+                    foreach ($examDateData['location_ids'] as $index => $locationId) {
+                        ExamDateLocation::create([
+                            'exam_date_id' => $examDate->id,
+                            'location_id' => $locationId,
+                            'priority' => $index + 1, // 1-based priority
+                            'current_registrations' => 0
+                        ]);
+                    }
+                } elseif (!empty($examDateData['location_id'])) {
+                    // Backward compatibility - single location
+                    ExamDateLocation::create([
+                        'exam_date_id' => $examDate->id,
+                        'location_id' => $examDateData['location_id'],
+                        'priority' => 1,
+                        'current_registrations' => 0
+                    ]);
+                }
             }
         }
 
-        // Load the exam with its dates for response
-        $exam->load('examDates');
+        // Load the exam with its dates and locations for response
+        $exam->load(['examDates.locations', 'examDates.examDateLocations.location']);
 
         return response()->json([
             'message' => 'Exam created successfully',
@@ -171,18 +223,28 @@ class ExamController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
+            'code_name' => [
+                'sometimes',
+                'string',
+                'max:255',
+                Rule::unique('exams', 'code_name')->ignore($id)
+            ],
             'description' => 'nullable|string',
             'price' => 'sometimes|numeric|min:0',
             'organization_id' => 'sometimes|exists:organizations,id',
             'registration_deadline' => 'nullable|date',
             'exam_dates' => 'nullable|array',
             'exam_dates.*.date' => 'required|date_format:Y-m-d\TH:i',
-            'exam_dates.*.location' => 'nullable|string|max:255'
+            'exam_dates.*.location' => 'nullable|string|max:255',
+            'exam_dates.*.location_id' => 'nullable|exists:locations,id',
+            'exam_dates.*.location_ids' => 'nullable|array',
+            'exam_dates.*.location_ids.*' => 'exists:locations,id'
         ]);
 
         // Update exam basic info
         $exam->update([
             'name' => $validated['name'] ?? $exam->name,
+            'code_name' => $validated['code_name'] ?? $exam->code_name,
             'description' => $validated['description'] ?? $exam->description,
             'price' => $validated['price'] ?? $exam->price,
             'organization_id' => $validated['organization_id'] ?? $exam->organization_id,
@@ -191,23 +253,45 @@ class ExamController extends Controller
 
         // Update exam dates if provided
         if (array_key_exists('exam_dates', $validated)) {
-            // Delete existing exam dates
+            // Delete existing exam dates (this will cascade delete exam_date_locations)
             $exam->examDates()->delete();
 
             // Create new exam dates if provided
             if (!empty($validated['exam_dates'])) {
-                foreach ($validated['exam_dates'] as $examDate) {
-                    ExamDate::create([
+                foreach ($validated['exam_dates'] as $examDateData) {
+                    $examDate = ExamDate::create([
                         'exam_id' => $exam->id,
-                        'date' => $examDate['date'],
-                        'location' => $examDate['location'] ?? null
+                        'date' => $examDateData['date'],
+                        'location' => $examDateData['location'] ?? null,
+                        'location_id' => $examDateData['location_id'] ?? null
                     ]);
+
+                    // Handle multiple locations (new format)
+                    if (!empty($examDateData['location_ids']) && is_array($examDateData['location_ids'])) {
+                        foreach ($examDateData['location_ids'] as $index => $locationId) {
+                            ExamDateLocation::create([
+                                'exam_date_id' => $examDate->id,
+                                'location_id' => $locationId,
+                                'priority' => $index + 1, // Priority based on array order
+                                'current_registrations' => 0
+                            ]);
+                        }
+                    }
+                    // Handle single location (backward compatibility)
+                    elseif (!empty($examDateData['location_id'])) {
+                        ExamDateLocation::create([
+                            'exam_date_id' => $examDate->id,
+                            'location_id' => $examDateData['location_id'],
+                            'priority' => 1,
+                            'current_registrations' => 0
+                        ]);
+                    }
                 }
             }
         }
 
-        // Load the exam with its dates for response
-        $exam->load('examDates');
+        // Load the exam with its dates and locations for response
+        $exam->load('examDates.locations');
 
         return response()->json([
             'message' => 'Exam updated successfully',
@@ -220,6 +304,15 @@ class ExamController extends Controller
      */
     public function delete(string $id): JsonResponse
     {
+        $user = request()->user();
+
+        // Check if user has required roles
+        if (!$user->hasAnyRole(['super_admin', 'org_admin'])) {
+            return response()->json([
+                'message' => 'Unauthorized. Admin access required.'
+            ], 403);
+        }
+
         $exam = Exam::find($id);
 
         if (!$exam) {
@@ -228,20 +321,45 @@ class ExamController extends Controller
             ], 404);
         }
 
-        $exam->delete();
+        // For org_admin, ensure they can only delete exams for their organization
+        if ($user->hasRole('org_admin')) {
+            $user->load('orgAdmin');
+            $organizationId = $user->organization_id ?? $user->orgAdmin?->organization_id;
 
-        return response()->json([
-            'message' => 'Exam deleted successfully'
-        ]);
+            if (!$organizationId || $exam->organization_id !== $organizationId) {
+                return response()->json([
+                    'message' => 'Unauthorized. You can only delete exams for your organization.'
+                ], 403);
+            }
+        }
+
+        try {
+            $exam->delete();
+
+            return response()->json([
+                'message' => 'Exam deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to delete exam: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function regForExam()
     {
         $exam_id = request()->examId;
+        $selected_exam_date_id = request()->selectedExamDateId;
 
         if (!$exam_id) {
             return response()->json([
                 'message' => 'Exam ID is required'
+            ], 400);
+        }
+
+        if (!$selected_exam_date_id) {
+            return response()->json([
+                'message' => 'Selected exam date is required'
             ], 400);
         }
 
@@ -251,6 +369,57 @@ class ExamController extends Controller
                 'message' => 'Exam not found'
             ], 404);
         }
+
+        // Verify that the selected exam date belongs to this exam
+        $examDate = ExamDate::where('id', $selected_exam_date_id)
+            ->where('exam_id', $exam_id)
+            ->first();
+
+        if (!$examDate) {
+            return response()->json([
+                'message' => 'Invalid exam date selected'
+            ], 400);
+        }
+
+        // Check if student is already registered for this exam
+        $existingRegistration = StudentExam::where('student_id', Auth::id())
+            ->where('exam_id', $exam_id)
+            ->first();
+
+        if ($existingRegistration) {
+            return response()->json([
+                'message' => 'You are already registered for this exam'
+            ], 400);
+        }
+
+        // Find the first available location for this exam's organization
+        $assigned_location_id = null;
+        $exam_organization_id = $exam->organization_id;
+
+        if ($exam_organization_id) {
+            $availableLocation = Location::where('organization_id', $exam_organization_id)
+                ->whereHas('examDates', function ($query) use ($selected_exam_date_id) {
+                    $query->where('exam_dates.id', $selected_exam_date_id);
+                })
+                ->get()
+                ->first(function ($location) {
+                    return $location->hasAvailableCapacity();
+                });
+
+            // If no location found directly linked to exam date, try any location in the organization
+            if (!$availableLocation) {
+                $availableLocation = Location::where('organization_id', $exam_organization_id)
+                    ->get()
+                    ->first(function ($location) {
+                        return $location->hasAvailableCapacity();
+                    });
+            }
+
+            if ($availableLocation) {
+                $assigned_location_id = $availableLocation->id;
+            }
+        }
+
         $exam_name = $exam->code_name;
 
         // Proceed with registration logic
@@ -258,6 +427,8 @@ class ExamController extends Controller
             'index_number' => $this->genIndexNumber($exam_name),
             'student_id' => Auth::id(),
             'exam_id' => $exam_id,
+            'selected_exam_date_id' => $selected_exam_date_id,
+            'assigned_location_id' => $assigned_location_id,
             'payment_id' => null,
         ]);
 
@@ -307,6 +478,82 @@ class ExamController extends Controller
             $sequence = str_pad($count, 3, '0', STR_PAD_LEFT);
             $suffix = $sequence;
             return $prefix . $suffix;
+        }
+    }
+
+    /**
+     * Update exam type details only (name, code_name, description, price)
+     */
+    public function updateType(Request $request, $id): JsonResponse
+    {
+        $user = $request->user();
+
+        // Check if user has required roles
+        if (!$user->hasAnyRole(['super_admin', 'org_admin'])) {
+            return response()->json([
+                'message' => 'Unauthorized. Admin access required.'
+            ], 403);
+        }
+
+        try {
+            $exam = Exam::findOrFail($id);
+
+            // For org_admin, ensure the exam belongs to their organization
+            if ($user->hasRole('org_admin') && !$user->hasRole('super_admin')) {
+                $user->load('orgAdmin');
+                if (!$user->orgAdmin || $exam->organization_id !== $user->orgAdmin->organization_id) {
+                    return response()->json([
+                        'message' => 'Unauthorized. You can only update exams from your organization.'
+                    ], 403);
+                }
+            }
+
+            // Validate request
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'code_name' => 'required|string|max:50',
+                'description' => 'nullable|string',
+                'price' => 'required|numeric|min:0',
+            ]);
+
+            // Update only exam type fields
+            $exam->update([
+                'name' => $request->name,
+                'code_name' => $request->code_name,
+                'description' => $request->description,
+                'price' => $request->price,
+            ]);
+
+            Log::info('Exam type updated successfully', [
+                'exam_id' => $exam->id,
+                'updated_by' => $user->id,
+                'fields' => ['name', 'code_name', 'description', 'price']
+            ]);
+
+            return response()->json([
+                'message' => 'Exam type updated successfully',
+                'data' => $exam->fresh()
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Exam not found'
+            ], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Failed to update exam type: ' . $e->getMessage(), [
+                'exam_id' => $id,
+                'user_id' => $user->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to update exam type',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 }
