@@ -229,6 +229,8 @@ class StudentAdminController extends Controller
                     'completed' => $completed,
                 ];
             })
+            // Keep only the latest registration per exam (collection is ordered DESC above)
+            ->unique('id')
             ->values();
 
         $resource = new StudentResource($studentUser);
