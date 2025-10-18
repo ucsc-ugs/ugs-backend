@@ -556,4 +556,39 @@ class ExamController extends Controller
             ], 500);
         }
     }
+
+    //org admin getting exams of his organization with past exam dates
+    public function getExamsWithPastDates(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $user->load('orgAdmin');
+
+        if (!$user->hasRole('org_admin')) {
+            return response()->json([
+                'message' => 'Unauthorized. Org admin access required.'
+            ], 403);
+        }
+
+        $organizationId = $user->organization_id ?? $user->orgAdmin?->organization_id;
+
+        if (!$organizationId) {
+            return response()->json([
+                'message' => 'No organization found for this user'
+            ], 404);
+        }
+
+        $exams = Exam::with(['examDates' => function ($query) {
+            $query->where('date', '<', now())
+                ->withCount('studentExams'); // count registered students
+        }])
+        ->where('organization_id', $organizationId)
+        ->get()
+        ->filter(fn($exam) => $exam->examDates->isNotEmpty());
+
+        return response()->json([
+            'message' => 'Exams with past dates retrieved successfully',
+            'data' => $exams
+        ]);
+    }
+
 }
