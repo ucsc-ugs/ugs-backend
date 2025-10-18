@@ -53,17 +53,14 @@ class DatabaseSeeder extends Seeder
         );
 
         // Create admin user
-        $adminUser = User::updateOrCreate(
-            ['email' => 'admin@example.com'],
-            [
-                'name' => 'Super Admin User',
-                'password' => Hash::make('password'),
-            ]
-        );
-        if (!$adminUser->hasRole('super_admin')) {
-            $adminUser->assignRole('super_admin');
-        }
-        
+        $adminUser = User::factory()->create([
+            'name' => 'Super Admin User',
+            'email' => 'admin@example.com',
+            'student_id' => null,
+            'user_type' => 'super-admin'
+        ]);
+        $adminUser->assignRole('super_admin');
+
         // Give all permissions to super admin
         $allPermissions = \Spatie\Permission\Models\Permission::all();
         $adminUser->givePermissionTo($allPermissions);
@@ -81,6 +78,15 @@ class DatabaseSeeder extends Seeder
             $orgAdminUser->assignRole('org_admin');
         }
         
+        $orgAdminUser = User::factory()->create([
+            'name' => 'Organization Admin',
+            'email' => 'orgadmin@example.com',
+            'student_id' => null,
+            'user_type' => 'org-admin',
+            'organization_id' => Organization::where('name', 'University of Colombo School of Computing')->first()->id
+        ]);
+        $orgAdminUser->assignRole('org_admin');
+
         // Give org admin specific permissions
         $orgAdminPermissions = [
             'organization.view',
@@ -114,7 +120,6 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             OrgExamSeeder::class,
-            NotificationSeeder::class,
         ]);
 
         // Align PostgreSQL sequences to prevent duplicate key errors when factories ran previously
