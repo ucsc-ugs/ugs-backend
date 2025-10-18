@@ -64,19 +64,6 @@ class DatabaseSeeder extends Seeder
         // Give all permissions to super admin
         $allPermissions = \Spatie\Permission\Models\Permission::all();
         $adminUser->givePermissionTo($allPermissions);
-
-        // Create org admin user
-        $orgAdminUser = User::updateOrCreate(
-            ['email' => 'orgadmin@example.com'],
-            [
-                'name' => 'Organization Admin',
-                'password' => Hash::make('password'),
-                'organization_id' => $org->id,
-            ]
-        );
-        if (!$orgAdminUser->hasRole('org_admin')) {
-            $orgAdminUser->assignRole('org_admin');
-        }
         
         $orgAdminUser = User::factory()->create([
             'name' => 'Organization Admin',
