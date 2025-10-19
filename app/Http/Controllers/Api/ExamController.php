@@ -8,6 +8,7 @@ use App\Models\ExamDate;
 use App\Models\ExamDateLocation;
 use App\Models\Location;
 use App\Models\StudentExam;
+use App\Traits\CreatesNotifications;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -17,6 +18,8 @@ use Illuminate\Validation\Rule;
 
 class ExamController extends Controller
 {
+    use CreatesNotifications;
+
     /**
      * Display a public listing of all exams for students
      */
@@ -709,6 +712,30 @@ class ExamController extends Controller
                 } else {
                     $errors[] = "Student with index number {$resultData['index_number']} not found for this exam date";
                 }
+            }
+
+            // Send notifications to all students who registered for this exam date
+            if ($updatedCount > 0) {
+                $students = StudentExam::where('exam_id', $examDate->exam_id)
+                    ->where('selected_exam_date_id', $examDateId)
+                    ->get();
+
+                foreach ($students as $student) {
+                    $this->createNotification(
+                        'Exam Results Published',
+                        "Results for {$examDate->exam->name} on " . \Carbon\Carbon::parse($examDate->date)->format('F j, Y') . " have been published. Check your dashboard to view your results.",
+                        null,
+                        $student->student_id,
+                        false
+                    );
+                }
+
+                Log::info('Result publication notifications sent', [
+                    'exam_date_id' => $examDateId,
+                    'exam_id' => $examDate->exam_id,
+                    'notification_count' => $students->count(),
+                    'updated_by' => $user->id
+                ]);
             }
 
             return response()->json([
