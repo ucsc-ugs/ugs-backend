@@ -49,7 +49,10 @@ class ExamController extends Controller
 
         // Super admin can see all exams
         if ($user->hasRole('super_admin')) {
-            $exams = Exam::with(['organization', 'examDates.locations', 'examDates.studentExams'])->get();
+            $exams = Exam::with(['organization:id,name', 'examDates' => function ($query) {
+                $query->withCount('studentExams as current_registrations')
+                    ->with(['locations:id,location_name,capacity']);
+            }])->get();
         }
         // Org admin can only see exams related to their organization
         elseif ($user->hasRole('org_admin')) {
@@ -62,23 +65,18 @@ class ExamController extends Controller
                 ], 404);
             }
 
-            $exams = Exam::with(['organization', 'examDates.locations', 'examDates.studentExams'])
-                ->where('organization_id', $organizationId)
-                ->get();
+            $exams = Exam::with(['organization:id,name', 'examDates' => function ($query) {
+                $query->withCount('studentExams as current_registrations')
+                    ->with(['locations:id,location_name,capacity']);
+            }])->where('organization_id', $organizationId)->get();
         }
 
-        // Transform the data to include registration counts and max participants
+        // Transform the data to include max participants (calculated from locations)
         $transformedExams = $exams->map(function ($exam) {
             $exam->examDates = $exam->examDates->map(function ($examDate) {
                 // Calculate total capacity from all locations
                 $maxParticipants = $examDate->locations->sum('capacity');
-
-                // Count current registrations for this exam date
-                $currentRegistrations = $examDate->studentExams->count();
-
-                // Add the calculated values to the exam date
                 $examDate->max_participants = $maxParticipants;
-                $examDate->current_registrations = $currentRegistrations;
 
                 return $examDate;
             });
@@ -581,9 +579,9 @@ class ExamController extends Controller
             $query->where('date', '<', now())
                 ->withCount('studentExams'); // count registered students
         }])
-        ->where('organization_id', $organizationId)
-        ->get()
-        ->filter(fn($exam) => $exam->examDates->isNotEmpty());
+            ->where('organization_id', $organizationId)
+            ->get()
+            ->filter(fn($exam) => $exam->examDates->isNotEmpty());
 
         return response()->json([
             'message' => 'Exams with past dates retrieved successfully',
@@ -721,7 +719,6 @@ class ExamController extends Controller
                     'errors' => $errors
                 ]
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to publish exam results: ' . $e->getMessage(), [
                 'exam_date_id' => $examDateId,
@@ -869,7 +866,6 @@ class ExamController extends Controller
                     'updated_at' => $studentExam->updated_at
                 ]
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to update published result: ' . $e->getMessage(), [
                 'exam_date_id' => $examDateId,
@@ -884,5 +880,4 @@ class ExamController extends Controller
             ], 500);
         }
     }
-
 }

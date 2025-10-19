@@ -51,13 +51,13 @@ class ExamDateController extends Controller
 
         // Send notification about status change
         if ($oldStatus !== $validated['status']) {
-            $statusMessage = match($validated['status']) {
+            $statusMessage = match ($validated['status']) {
                 'upcoming' => 'rescheduled and is now upcoming',
                 'completed' => 'has been completed',
                 'cancelled' => 'has been cancelled',
                 default => 'status has been updated'
             };
-            
+
             $this->createNotification(
                 'Exam Date Status Updated',
                 "The exam \"{$examDate->exam->name}\" scheduled for " . Carbon::parse($examDate->date)->format('F j, Y \a\t g:i A') . " {$statusMessage}.",
@@ -70,24 +70,6 @@ class ExamDateController extends Controller
         return response()->json([
             'message' => 'Exam date status updated successfully',
             'data' => $examDate->fresh()
-        ]);
-    }
-
-    /**
-     * Automatically update exam date statuses based on current date
-     */
-    public function updateExpiredStatuses(): JsonResponse
-    {
-        $today = Carbon::now()->startOfDay();
-
-        // Update upcoming exams that have passed their date to completed
-        $updated = ExamDate::where('status', 'upcoming')
-            ->where('date', '<', $today)
-            ->update(['status' => 'completed']);
-
-        return response()->json([
-            'message' => 'Exam date statuses updated automatically',
-            'updated_count' => $updated
         ]);
     }
 
@@ -278,7 +260,7 @@ class ExamDateController extends Controller
         // Send notification about new exam date
         $locationNames = $examDate->locations->pluck('location_name')->join(', ');
         $locationInfo = $locationNames ? " at {$locationNames}" : '';
-        
+
         $this->createNotification(
             'New Exam Date Added',
             "A new date has been added for the exam \"{$exam->name}\" on " . Carbon::parse($examDate->date)->format('F j, Y \a\t g:i A') . "{$locationInfo}.",
@@ -469,7 +451,7 @@ class ExamDateController extends Controller
             // Send notification about exam date update
             $locationNames = $examDate->fresh(['locations'])->locations->pluck('location_name')->join(', ');
             $locationInfo = $locationNames ? " Location(s): {$locationNames}." : '';
-            
+
             $this->createNotification(
                 'Exam Date Updated',
                 "The exam \"{$examDate->exam->name}\" date has been updated to " . Carbon::parse($request->date)->format('F j, Y \a\t g:i A') . ".{$locationInfo}",

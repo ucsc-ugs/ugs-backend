@@ -67,7 +67,6 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::patch('/exam-date/{id}/status', [ExamDateController::class, 'updateStatus']);
     Route::put('/exam-date/{id}', [ExamDateController::class, 'update']); // Update exam date details
     Route::delete('/exam-date/{id}', [ExamDateController::class, 'destroy']); // Delete exam date
-    Route::post('/exam-dates/update-expired-statuses', [ExamDateController::class, 'updateExpiredStatuses']);
     Route::get('/exam-dates/{id}/details', [ExamDateController::class, 'details']);
     Route::get('/exam-dates/{examDateId}/halls/{locationId}/student-list', [ExamDateController::class, 'generateHallStudentList']);
     Route::post('/exam/{examId}/exam-dates', [ExamDateController::class, 'addDateToExam']);
