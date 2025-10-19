@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\ValidatesNicPassport;
 
 class Student extends Model
 {
-    use HasFactory;
+    use HasFactory, ValidatesNicPassport;
     // ...existing code...
     public function announcementReads()
     {

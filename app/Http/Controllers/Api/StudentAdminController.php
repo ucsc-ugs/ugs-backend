@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\StudentResource;
 use App\Models\User;
 use App\Models\Student;
+use App\Traits\ValidatesNicPassport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 
 class StudentAdminController extends Controller
 {
+    use ValidatesNicPassport;
     // ... existing index() method ...
     public function index(Request $request)
     {
@@ -255,7 +257,22 @@ class StudentAdminController extends Controller
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'min:8'],
             'local' => ['required', 'boolean'],
-            'passport_nic' => ['required', 'string', 'unique:students,passport_nic'],
+            'passport_nic' => [
+                'required',
+                'string',
+                'unique:students,passport_nic',
+                'max:20',
+                function ($attribute, $value, $fail) use ($request) {
+                    $isLocal = $request->input('local');
+                    if (!static::validateNicOrPassport($value, $isLocal)) {
+                        if ($isLocal) {
+                            $fail('The NIC number must be a valid Sri Lankan NIC number (format: 9 digits + V/X or 12 digits).');
+                        } else {
+                            $fail('The passport number must be a valid format (6-15 alphanumeric characters).');
+                        }
+                    }
+                }
+            ],
             'organization_id' => ['sometimes', 'integer', 'exists:organizations,id'],
         ]);
 
@@ -328,7 +345,23 @@ class StudentAdminController extends Controller
             'email' => ['sometimes', 'email', 'unique:users,email,' . $target->id],
             'password' => ['sometimes', 'nullable', 'min:8'],
             'local' => ['sometimes', 'boolean'],
-            'passport_nic' => ['sometimes', 'string', 'unique:students,passport_nic,' . ($target->student->id ?? 'NULL')],
+            'passport_nic' => [
+                'sometimes',
+                'string',
+                'unique:students,passport_nic,' . ($target->student->id ?? 'NULL'),
+                'max:20',
+                function ($attribute, $value, $fail) use ($request, $target) {
+                    // Get the local value from request or existing student record
+                    $isLocal = $request->input('local', $target->student->local ?? true);
+                    if (!static::validateNicOrPassport($value, $isLocal)) {
+                        if ($isLocal) {
+                            $fail('The NIC number must be a valid Sri Lankan NIC number (format: 9 digits + V/X or 12 digits).');
+                        } else {
+                            $fail('The passport number must be a valid format (6-15 alphanumeric characters).');
+                        }
+                    }
+                }
+            ],
         ]);
 
         try {
