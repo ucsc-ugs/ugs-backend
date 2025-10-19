@@ -609,11 +609,13 @@ class ExamController extends Controller
 
         $exams = Exam::with(['examDates' => function ($query) {
             $query->where('date', '<', now())
-                ->withCount('studentExams'); // count registered students
+                ->withCount('studentExams');
         }])
-            ->where('organization_id', $organizationId)
-            ->get()
-            ->filter(fn($exam) => $exam->examDates->isNotEmpty());
+        ->whereHas('examDates', function($query) {
+            $query->where('date', '<', now());
+        })
+        ->where('organization_id', $organizationId)
+        ->get();
 
         return response()->json([
             'message' => 'Exams with past dates retrieved successfully',
