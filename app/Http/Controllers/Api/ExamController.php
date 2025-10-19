@@ -53,9 +53,22 @@ class ExamController extends Controller
         // Super admin can see all exams
         if ($user->hasRole('super_admin')) {
             $exams = Exam::with(['organization:id,name', 'examDates' => function ($query) {
-                $query->withCount('studentExams as current_registrations')
-                    ->with(['locations:id,location_name,capacity']);
-            }])->get();
+                $query->withCount([
+                    'studentExams as current_registrations' => function ($q) {
+                        $q->whereHas('payment', function ($payment) {
+                            $payment->where('status_code', 2);
+                        });
+                    }
+                ])->with(['locations:id,location_name,capacity']);
+            }])
+            ->withCount([
+                'studentExams as total_students_enrolled' => function ($q) {
+                    $q->whereHas('payment', function ($payment) {
+                        $payment->where('status_code', 2);
+                    });
+                }
+            ])
+            ->get();
         }
         // Org admin can only see exams related to their organization
         elseif ($user->hasRole('org_admin')) {
@@ -69,9 +82,22 @@ class ExamController extends Controller
             }
 
             $exams = Exam::with(['organization:id,name', 'examDates' => function ($query) {
-                $query->withCount('studentExams as current_registrations')
-                    ->with(['locations:id,location_name,capacity']);
-            }])->where('organization_id', $organizationId)->get();
+                $query->withCount([
+                    'studentExams as current_registrations' => function ($q) {
+                        $q->whereHas('payment', function ($payment) {
+                            $payment->where('status_code', 2);
+                        });
+                    }
+                ])->with(['locations:id,location_name,capacity']);
+            }])
+            ->withCount([
+                'studentExams as total_students_enrolled' => function ($q) {
+                    $q->whereHas('payment', function ($payment) {
+                        $payment->where('status_code', 2);
+                    });
+                }
+            ])
+            ->where('organization_id', $organizationId)->get();
         }
 
         // Transform the data to include max participants (calculated from locations)
@@ -83,6 +109,9 @@ class ExamController extends Controller
 
                 return $examDate;
             });
+
+            // Add total students count at exam level for easier frontend access
+            $exam->students_count = $exam->total_students_enrolled;
 
             return $exam;
         });
