@@ -75,6 +75,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 // Notifications for students (public)
 Route::get('/student/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
+Route::get('/announcements/{id}', [\App\Http\Controllers\NotificationController::class, 'show']);
 
 // General notifications endpoints (authenticated)
 Route::middleware('auth:sanctum')->group(function () {
