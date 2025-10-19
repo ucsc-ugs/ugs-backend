@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SuperAdminController;
 use App\Http\Controllers\Api\OrgAdminController;
+use App\Http\Controllers\Admin\RevenueController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\ExamDateController;
@@ -19,10 +20,11 @@ Route::post('/login', [AuthController::class, 'authenticate']);
 // Protected routes (requires authentication)
 Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(function () {
 
-    // Super-admin password change
+    // Super Admin password change
     Route::put('/profile/password', [UserController::class, 'updatePassword']);
 
-    Route::get('/revenue', [SuperAdminController::class, 'dashboard']);
+    // Revenue endpoint - Super Admin only
+    Route::middleware('super_admin')->get('/revenue', [RevenueController::class, 'index']);
 
     Route::get('/user', [UserController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);

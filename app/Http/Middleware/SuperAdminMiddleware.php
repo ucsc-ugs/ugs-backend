@@ -15,10 +15,15 @@ class SuperAdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$request->user() || !$request->user()->isSuperAdmin()) {
-            return response()->json([
-                'message' => 'Unauthorized. Super admin access required.'
-            ], 403);
+        $user = $request->user();
+        
+        // IMPORTANT: Check if user exists before calling methods on it
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        
+        if (!$user->isSuperAdmin()) {
+            return response()->json(['message' => 'Unauthorized. Super admin access required.'], 403);
         }
 
         return $next($request);
