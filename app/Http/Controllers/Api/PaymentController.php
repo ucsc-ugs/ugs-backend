@@ -9,6 +9,7 @@ use App\Models\RevenueTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class PaymentController extends Controller
@@ -33,7 +34,7 @@ class PaymentController extends Controller
             'merchant_id' => $merchant_id,
             'amount' => $amount,
             'currency' => $currency,
-            'notify_url' => 'https://6c8f55c58cf7.ngrok-free.app/api/payment/notify', // route('payment.notify'),
+            'notify_url' => 'https://b5dc8c9c0dc8.ngrok-free.app/api/payment/notify', // route('payment.notify'),
             'first_name' => $userData['first_name'],
             'last_name' => $userData['last_name'],
             'email' => $userData['email'],
@@ -87,8 +88,8 @@ class PaymentController extends Controller
 
             // Create or update payment record
             $payment = Payment::updateOrCreate(
-                ['student_exam_id' => $studentExam->id],
                 [
+                    'student_exam_id' => $studentExam->id,
                     'payment_id' => $request->input('payment_id'),
                     'payhere_amount' => $payhere_amount,
                     'payhere_currency' => $payhere_currency,
@@ -117,6 +118,18 @@ class PaymentController extends Controller
             if (($local_md5sig === $md5sig) && ($status_code == 2)) {
                 // Payment successful
                 $studentExam->update(['status' => 'registered']);
+
+                // Sending the payment success email notification
+                $student = $studentExam->student;
+                $paymentDetails = [
+                    'student_name' => $student ? $student->name : null,
+                    'exam_name' => $exam ? $exam->name : null,
+                    'amount' => $payhere_amount,
+                    'currency' => $payhere_currency,
+                    'status_message' => $this->getPaymentStatusMessage($status_code),
+                ];
+                
+                $student->notify(new \App\Notifications\PaymentNotification($paymentDetails));
                 
                 // Create revenue transaction
                 $this->createRevenueTransaction(
@@ -149,7 +162,7 @@ class PaymentController extends Controller
             DB::rollBack();
             
             // Log the error
-            \Log::error('Payment processing error: ' . $e->getMessage());
+            Log::error('Payment processing error: ' . $e->getMessage());
             
             return response()->json([
                 'status' => 'error',

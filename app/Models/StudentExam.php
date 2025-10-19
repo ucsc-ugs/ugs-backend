@@ -20,7 +20,7 @@ class StudentExam extends Model
 
     public function student()
     {
-        return $this->belongsTo(Student::class);
+        return $this->belongsTo(User::class);
     }
 
     public function exam()
@@ -43,7 +43,7 @@ class StudentExam extends Model
         return $this->hasOne(Payment::class);
     }
 
-    public function revenueTransaction(): HasOne
+    public function revenueTransaction()
     {
         return $this->hasOne(RevenueTransaction::class);
     }
