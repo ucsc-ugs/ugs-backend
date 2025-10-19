@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SuperAdminController;
 use App\Http\Controllers\Api\OrgAdminController;
+use App\Http\Controllers\Admin\RevenueController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\ExamDateController;
@@ -19,7 +20,11 @@ Route::post('/login', [AuthController::class, 'authenticate']);
 // Protected routes (requires authentication)
 Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(function () {
 
-    Route::get('/revenue', [SuperAdminController::class, 'dashboard']);
+    // Super Admin password change
+    Route::put('/profile/password', [UserController::class, 'updatePassword']);
+
+    // Revenue endpoint - Super Admin only
+    Route::middleware('super_admin')->get('/revenue', [RevenueController::class, 'index']);
 
     Route::get('/user', [UserController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -67,7 +72,6 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::patch('/exam-date/{id}/status', [ExamDateController::class, 'updateStatus']);
     Route::put('/exam-date/{id}', [ExamDateController::class, 'update']); // Update exam date details
     Route::delete('/exam-date/{id}', [ExamDateController::class, 'destroy']); // Delete exam date
-    Route::post('/exam-dates/update-expired-statuses', [ExamDateController::class, 'updateExpiredStatuses']);
     Route::get('/exam-dates/{id}/details', [ExamDateController::class, 'details']);
     Route::get('/exam-dates/{examDateId}/halls/{locationId}/student-list', [ExamDateController::class, 'generateHallStudentList']);
     Route::post('/exam/{examId}/exam-dates', [ExamDateController::class, 'addDateToExam']);

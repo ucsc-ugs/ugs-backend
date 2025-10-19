@@ -62,9 +62,12 @@ class NotificationController extends Controller
             $now = now();
 
             // General announcements (audience=all, published, not expired)
+            // Limit to most recent 50 announcements to improve performance
             $allAnnouncements = Announcement::where('status', 'published')
                 ->where('audience', 'all')
                 ->where('expiry_date', '>=', $now)
+                ->orderBy('created_at', 'desc')
+                ->limit(50)
                 ->get();
 
             Log::info('General announcements found:', ['count' => $allAnnouncements->count()]);
@@ -83,6 +86,8 @@ class NotificationController extends Controller
                     ->where('audience', 'exam-specific')
                     ->whereIn('exam_id', $studentExamIds)
                     ->where('expiry_date', '>=', $now)
+                    ->orderBy('created_at', 'desc')
+                    ->limit(50)
                     ->get();
 
                 Log::info('Exam-specific announcements found:', ['count' => $examAnnouncements->count()]);
@@ -119,10 +124,16 @@ class NotificationController extends Controller
 
             // Format response with essential details and read status
             $result = $merged->map(function ($announcement) use ($examDetails, $readIds) {
+                // Truncate message to 200 characters for list view (full message available on detail view)
+                $message = $announcement->message;
+                $truncatedMessage = strlen($message) > 200
+                    ? substr($message, 0, 200) . '...'
+                    : $message;
+
                 $data = [
                     'id' => $announcement->id,
                     'title' => $announcement->title,
-                    'message' => $announcement->message,
+                    'message' => $truncatedMessage,
                     'audience' => $announcement->audience,
                     'exam_id' => $announcement->exam_id,
                     'publish_date' => $announcement->publish_date
@@ -176,5 +187,50 @@ class NotificationController extends Controller
             return response()->json(['error' => 'Exam not found'], 404);
         }
         return response()->json($exam);
+    }
+
+    /**
+     * Get full announcement details by ID
+     */
+    public function show($id)
+    {
+        try {
+            $announcement = Announcement::with('exam')->find($id);
+
+            if (!$announcement) {
+                return response()->json(['error' => 'Announcement not found'], 404);
+            }
+
+            $data = [
+                'id' => $announcement->id,
+                'title' => $announcement->title,
+                'message' => $announcement->message, // Full message
+                'audience' => $announcement->audience,
+                'exam_id' => $announcement->exam_id,
+                'publish_date' => $announcement->publish_date
+                    ? (is_object($announcement->publish_date) ? $announcement->publish_date->format('Y-m-d H:i:s') : (string)$announcement->publish_date)
+                    : (is_object($announcement->created_at) ? $announcement->created_at->format('Y-m-d H:i:s') : (string)$announcement->created_at),
+                'expiry_date' => $announcement->expiry_date
+                    ? (is_object($announcement->expiry_date) ? $announcement->expiry_date->format('Y-m-d H:i:s') : (string)$announcement->expiry_date)
+                    : null,
+                'status' => $announcement->status,
+                'priority' => $announcement->priority ?? 'medium',
+                'category' => $announcement->category ?? 'general',
+                'is_pinned' => $announcement->is_pinned ?? false,
+                'created_at' => is_object($announcement->created_at) ? $announcement->created_at->format('Y-m-d H:i:s') : (string)$announcement->created_at,
+                'tags' => $announcement->tags ?? [],
+            ];
+
+            // Add exam details if available
+            if ($announcement->exam) {
+                $data['exam_title'] = $announcement->exam->name;
+                $data['exam_code'] = $announcement->exam->code_name;
+            }
+
+            return response()->json($data, 200);
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch announcement: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch announcement'], 500);
+        }
     }
 }

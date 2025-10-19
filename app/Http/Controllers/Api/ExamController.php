@@ -8,6 +8,7 @@ use App\Models\ExamDate;
 use App\Models\ExamDateLocation;
 use App\Models\Location;
 use App\Models\StudentExam;
+use App\Traits\CreatesNotifications;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -17,6 +18,8 @@ use Illuminate\Validation\Rule;
 
 class ExamController extends Controller
 {
+    use CreatesNotifications;
+
     /**
      * Display a public listing of all exams for students
      */
@@ -49,7 +52,10 @@ class ExamController extends Controller
 
         // Super admin can see all exams
         if ($user->hasRole('super_admin')) {
-            $exams = Exam::with(['organization', 'examDates.locations', 'examDates.studentExams'])->get();
+            $exams = Exam::with(['organization:id,name', 'examDates' => function ($query) {
+                $query->withCount('studentExams as current_registrations')
+                    ->with(['locations:id,location_name,capacity']);
+            }])->get();
         }
         // Org admin can only see exams related to their organization
         elseif ($user->hasRole('org_admin')) {
@@ -62,23 +68,18 @@ class ExamController extends Controller
                 ], 404);
             }
 
-            $exams = Exam::with(['organization', 'examDates.locations', 'examDates.studentExams'])
-                ->where('organization_id', $organizationId)
-                ->get();
+            $exams = Exam::with(['organization:id,name', 'examDates' => function ($query) {
+                $query->withCount('studentExams as current_registrations')
+                    ->with(['locations:id,location_name,capacity']);
+            }])->where('organization_id', $organizationId)->get();
         }
 
-        // Transform the data to include registration counts and max participants
+        // Transform the data to include max participants (calculated from locations)
         $transformedExams = $exams->map(function ($exam) {
             $exam->examDates = $exam->examDates->map(function ($examDate) {
                 // Calculate total capacity from all locations
                 $maxParticipants = $examDate->locations->sum('capacity');
-
-                // Count current registrations for this exam date
-                $currentRegistrations = $examDate->studentExams->count();
-
-                // Add the calculated values to the exam date
                 $examDate->max_participants = $maxParticipants;
-                $examDate->current_registrations = $currentRegistrations;
 
                 return $examDate;
             });
@@ -581,9 +582,9 @@ class ExamController extends Controller
             $query->where('date', '<', now())
                 ->withCount('studentExams'); // count registered students
         }])
-        ->where('organization_id', $organizationId)
-        ->get()
-        ->filter(fn($exam) => $exam->examDates->isNotEmpty());
+            ->where('organization_id', $organizationId)
+            ->get()
+            ->filter(fn($exam) => $exam->examDates->isNotEmpty());
 
         return response()->json([
             'message' => 'Exams with past dates retrieved successfully',
@@ -713,6 +714,30 @@ class ExamController extends Controller
                 }
             }
 
+            // Send notifications to all students who registered for this exam date
+            if ($updatedCount > 0) {
+                $students = StudentExam::where('exam_id', $examDate->exam_id)
+                    ->where('selected_exam_date_id', $examDateId)
+                    ->get();
+
+                foreach ($students as $student) {
+                    $this->createNotification(
+                        'Exam Results Published',
+                        "Results for {$examDate->exam->name} on " . \Carbon\Carbon::parse($examDate->date)->format('F j, Y') . " have been published. Check your dashboard to view your results.",
+                        null,
+                        $student->student_id,
+                        false
+                    );
+                }
+
+                Log::info('Result publication notifications sent', [
+                    'exam_date_id' => $examDateId,
+                    'exam_id' => $examDate->exam_id,
+                    'notification_count' => $students->count(),
+                    'updated_by' => $user->id
+                ]);
+            }
+
             return response()->json([
                 'message' => 'Results published successfully',
                 'data' => [
@@ -721,7 +746,6 @@ class ExamController extends Controller
                     'errors' => $errors
                 ]
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to publish exam results: ' . $e->getMessage(), [
                 'exam_date_id' => $examDateId,
@@ -869,7 +893,6 @@ class ExamController extends Controller
                     'updated_at' => $studentExam->updated_at
                 ]
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to update published result: ' . $e->getMessage(), [
                 'exam_date_id' => $examDateId,
@@ -884,5 +907,4 @@ class ExamController extends Controller
             ], 500);
         }
     }
-
 }
