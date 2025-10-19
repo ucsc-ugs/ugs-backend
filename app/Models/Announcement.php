@@ -6,6 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class Announcement extends Model
 {
+    // ...existing code...
+    public function announcementReads()
+    {
+        return $this->hasMany(AnnouncementRead::class);
+    }
+
+    public function exam()
+    {
+        return $this->belongsTo(Exam::class);
+    }
+
     protected $fillable = [
         'title',
         'message',

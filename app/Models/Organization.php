@@ -15,6 +15,10 @@ class Organization extends Model
         'logo',
         'admin_id',
         'status',
+        'contact_email',
+        'phone_number',
+        'website',
+        'address',
     ];
 
     /**
@@ -39,5 +43,18 @@ class Organization extends Model
     public function exams()
     {
         return $this->hasMany(Exam::class);
+    }
+
+    public function revenueTransactions()
+    {
+        return $this->hasMany(RevenueTransaction::class);
+    }
+
+    /**
+     * An organization can have many locations
+     */
+    public function locations()
+    {
+        return $this->hasMany(Location::class);
     }
 }

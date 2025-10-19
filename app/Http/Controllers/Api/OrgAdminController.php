@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\UserResource;
 use App\Models\OrgAdmin;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -20,21 +21,32 @@ class OrgAdminController extends Controller
     {
         $user = $request->user();
 
+        // Check permission
+        if (!$user->can('organization.admins.view')) {
+            return response()->json(['message' => 'Unauthorized. You do not have permission to view organization admins.'], 403);
+        }
+
         // Check if user is an org admin
-        $orgAdmin = $user->orgAdmin;
+        $orgAdmin = $user->hasRole('org_admin');
         if (!$orgAdmin) {
             return response()->json(['message' => 'Unauthorized. Organization admin access required.'], 403);
         }
 
         // Get all admins from the same organization, excluding the current admin
-        $admins = OrgAdmin::with(['user', 'organization'])
-            ->where('organization_id', $orgAdmin->organization_id)
-            ->where('id', '!=', $orgAdmin->id) // Exclude self
+        $admins = OrgAdmin::with(['user.permissions', 'user.roles', 'organization'])
+            ->where('organization_id', $user->organization_id)
+            ->where('user_id', '!=', $user->id) // Exclude self by user_id
+            ->orderByDesc('created_at')
             ->get();
+
+        // Extract users from OrgAdmin and use UserResource
+        $adminUsers = $admins->map(function ($orgAdmin) {
+            return $orgAdmin->user;
+        });
 
         return response()->json([
             'message' => 'Organization admins retrieved successfully',
-            'data' => $admins
+            'data' => UserResource::collection($adminUsers)
         ]);
     }
 
@@ -45,8 +57,14 @@ class OrgAdminController extends Controller
     {
         $user = $request->user();
 
+        // Check permission
+        if (!$user->can('organization.admins.create')) {
+            return response()->json(['message' => 'Unauthorized. You do not have permission to create organization admins.'], 403);
+        }
+
         // Check if user is an org admin
-        $orgAdmin = $user->orgAdmin;
+        // $orgAdmin = $user->orgAdmin;
+        $orgAdmin = $user->hasRole('org_admin');
         if (!$orgAdmin) {
             return response()->json(['message' => 'Unauthorized. Organization admin access required.'], 403);
         }
@@ -55,6 +73,8 @@ class OrgAdminController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'min:8'],
+            'permissions' => ['required', 'array'],
+            'permissions.*' => ['string', 'distinct', 'exists:permissions,name']
         ]);
 
         try {
@@ -64,26 +84,32 @@ class OrgAdminController extends Controller
             $newUser = User::create([
                 'name' => $data['name'],
                 'email' => $data['email'],
-                'password' => Hash::make($data['password'])
+                'password' => Hash::make($data['password']),
+                'user_type' => 'org-admin',
+                'organization_id' => $user->organization_id
             ]);
 
             // Assign org_admin role
             $newUser->assignRole('org_admin');
+            foreach ($data['permissions'] as $permission) {
+                $newUser->givePermissionTo($permission);
+            }
 
             // Create org admin record for the same organization
             $newOrgAdmin = OrgAdmin::create([
                 'name' => $data['name'],
                 'user_id' => $newUser->id,
-                'organization_id' => $orgAdmin->organization_id // Same organization as the creator
+                'organization_id' => $user->organization_id // Same organization as the creator
             ]);
 
-            $newOrgAdmin->load(['user', 'organization']);
+            // Load relationships for the response
+            $newUser->load(['permissions', 'roles', 'organization']);
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Admin created successfully',
-                'data' => $newOrgAdmin
+                'data' => UserResource::make($newUser)
             ], 201);
         } catch (\Exception $e) {
             DB::rollback();
@@ -110,50 +136,63 @@ class OrgAdminController extends Controller
     {
         $user = $request->user();
 
+        // Check permission
+        if (!$user->can('organization.admins.update')) {
+            return response()->json(['message' => 'Unauthorized. You do not have permission to update organization admins.'], 403);
+        }
+
         // Check if user is an org admin
-        $orgAdmin = $user->orgAdmin;
+        $orgAdmin = $user->hasRole('org_admin');
         if (!$orgAdmin) {
             return response()->json(['message' => 'Unauthorized. Organization admin access required.'], 403);
         }
 
         // Find the admin to update and verify it belongs to the same organization
-        $targetAdmin = OrgAdmin::with('user')->findOrFail($id);
+        $targetAdmin = User::with(['permissions', 'roles', 'organization'])->findOrFail($id);
 
-        if ($targetAdmin->organization_id !== $orgAdmin->organization_id) {
+        if ($targetAdmin->organization_id !== $user->organization_id) {
             return response()->json(['message' => 'Unauthorized. You can only manage admins from your organization.'], 403);
         }
 
         // Prevent admin from updating themselves
-        if ($targetAdmin->id === $orgAdmin->id) {
+        if ($targetAdmin->id === $user->id) {
             return response()->json(['message' => 'You cannot update your own account through this endpoint.'], 403);
         }
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', Rule::unique('users')->ignore($targetAdmin->user->id)],
+            'email' => ['required', 'email', Rule::unique('users')->ignore($targetAdmin->id)],
+            'permissions' => ['sometimes', 'array'],
+            'permissions.*' => ['string', 'distinct', 'exists:permissions,name'],
         ]);
 
         try {
             DB::beginTransaction();
 
             // Update user
-            $targetAdmin->user->update([
+            $targetAdmin->update([
                 'name' => $data['name'],
                 'email' => $data['email']
             ]);
 
-            // Update org admin
-            $targetAdmin->update([
+            // Update org admin record if exists
+            $targetAdmin->orgAdmin?->update([
                 'name' => $data['name']
             ]);
 
-            $targetAdmin->load(['user', 'organization']);
+            // Update permissions if provided
+            if (isset($data['permissions'])) {
+                // Sync permissions (this will remove old ones and add new ones)
+                $targetAdmin->syncPermissions($data['permissions']);
+            }
+
+            $targetAdmin->load(['permissions', 'roles', 'organization']);
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Admin updated successfully',
-                'data' => $targetAdmin
+                'data' => UserResource::make($targetAdmin)
             ]);
         } catch (\Exception $e) {
             DB::rollback();
@@ -172,34 +211,37 @@ class OrgAdminController extends Controller
     {
         $user = $request->user();
 
+        // Check permission
+        if (!$user->can('organization.admins.delete')) {
+            return response()->json(['message' => 'Unauthorized. You do not have permission to delete organization admins.'], 403);
+        }
+
         // Check if user is an org admin
-        $orgAdmin = $user->orgAdmin;
+        $orgAdmin = $user->hasRole('org_admin');
         if (!$orgAdmin) {
             return response()->json(['message' => 'Unauthorized. Organization admin access required.'], 403);
         }
 
         // Find the admin to delete and verify it belongs to the same organization
-        $targetAdmin = OrgAdmin::with('user')->findOrFail($id);
+        $targetAdmin = User::findOrFail($id);
 
-        if ($targetAdmin->organization_id !== $orgAdmin->organization_id) {
+        if ($targetAdmin->organization_id !== $user->organization_id) {
             return response()->json(['message' => 'Unauthorized. You can only manage admins from your organization.'], 403);
         }
 
         // Prevent admin from deleting themselves
-        if ($targetAdmin->id === $orgAdmin->id) {
+        if ($targetAdmin->id === $user->id) {
             return response()->json(['message' => 'You cannot delete your own account.'], 403);
         }
 
         try {
             DB::beginTransaction();
 
-            $targetUser = $targetAdmin->user;
-
-            // Delete org admin record
-            $targetAdmin->delete();
+            // Delete org admin record if exists
+            $targetAdmin->orgAdmin?->delete();
 
             // Delete user account
-            $targetUser->delete();
+            $targetAdmin->delete();
 
             DB::commit();
 
@@ -223,6 +265,11 @@ class OrgAdminController extends Controller
     {
         $user = $request->user();
 
+        // Check permission
+        if (!$user->can('organization.view')) {
+            return response()->json(['message' => 'Unauthorized. You do not have permission to view organization details.'], 403);
+        }
+
         // Check if user is an org admin
         $orgAdmin = $user->orgAdmin;
         if (!$orgAdmin) {
@@ -244,20 +291,30 @@ class OrgAdminController extends Controller
     {
         $user = $request->user();
 
+        // Check permission
+        if (!$user->can('organization.update')) {
+            return response()->json(['message' => 'Unauthorized. You do not have permission to update organization details.'], 403);
+        }
+
         // Check if user is an org admin
         $orgAdmin = $user->orgAdmin;
         if (!$orgAdmin) {
             return response()->json(['message' => 'Unauthorized. Organization admin access required.'], 403);
         }
 
+        // Log the incoming request data for debugging
+        Log::info('Organization update request data:', $request->all());
+
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'description' => ['sometimes', 'string', 'max:1000'],
-            'contact_email' => ['sometimes', 'email'],
-            'phone_number' => ['sometimes', 'string', 'max:20'],
-            'address' => ['sometimes', 'string', 'max:500'],
-            'website' => ['sometimes', 'url', 'max:255']
+            'contact_email' => ['sometimes', 'nullable', 'email'],
+            'phone_number' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'address' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'website' => ['sometimes', 'nullable', 'url', 'max:255']
         ]);
+
+        Log::info('Validated organization update data:', $data);
 
         try {
             $organization = $orgAdmin->organization;
@@ -282,6 +339,11 @@ class OrgAdminController extends Controller
     public function uploadOrganizationLogo(Request $request)
     {
         $user = $request->user();
+
+        // Check permission
+        if (!$user->can('organization.update')) {
+            return response()->json(['message' => 'Unauthorized. You do not have permission to update organization details.'], 403);
+        }
 
         // Check if user is an org admin
         $orgAdmin = $user->orgAdmin;
@@ -320,6 +382,42 @@ class OrgAdminController extends Controller
             return response()->json([
                 'message' => 'Failed to upload logo',
                 'errors' => ['logo' => 'Something went wrong during upload.']
+            ], 500);
+        }
+    }
+
+    public function changePassword(Request $request)
+    {
+        $user = $request->user();
+
+        // Validate input
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        try {
+            // Verify current password
+            if (!Hash::check($data['current_password'], $user->password)) {
+                return response()->json([
+                    'message' => 'Current password is incorrect',
+                    'errors' => ['current_password' => 'The current password is incorrect.']
+                ], 422);
+            }
+
+            // Update password
+            $user->update([
+                'password' => Hash::make($data['new_password'])
+            ]);
+
+            return response()->json([
+                'message' => 'Password changed successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Password change error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to change password',
+                'errors' => ['general' => 'Something went wrong during password change.']
             ], 500);
         }
     }

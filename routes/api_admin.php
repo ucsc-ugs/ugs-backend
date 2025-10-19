@@ -3,10 +3,14 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SuperAdminController;
 use App\Http\Controllers\Api\OrgAdminController;
+use App\Http\Controllers\Admin\RevenueController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ExamController;
+use App\Http\Controllers\Api\ExamDateController;
 use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\StudentAdminController;
 use Illuminate\Http\Request;
 
 
@@ -15,6 +19,12 @@ Route::post('/login', [AuthController::class, 'authenticate']);
 
 // Protected routes (requires authentication)
 Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(function () {
+
+    // Super Admin password change
+    Route::put('/profile/password', [UserController::class, 'updatePassword']);
+
+    // Revenue endpoint - Super Admin only
+    Route::middleware('super_admin')->get('/revenue', [RevenueController::class, 'index']);
 
     Route::get('/user', [UserController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -45,19 +55,45 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::put('/my-organization', [OrgAdminController::class, 'updateMyOrganization']);
     Route::post('/my-organization/logo', [OrgAdminController::class, 'uploadOrganizationLogo']);
 
-    // Profile maintenance
-    Route::get('/profile', [UserController::class, 'user']); // Same as /api/user endpoint
-    Route::patch('/profile', [UserController::class, 'updateProfile']);
+    // User Account Management
+    Route::put('/change-password', [OrgAdminController::class, 'changePassword']);
 
-    // Route::delete('/profile', [UserController::class, 'deleteProfile']);  // Not implemented yet
-    Route::put('/profile/password', [UserController::class, 'updatePassword']);
+
 
     // Exam routes (token authentication required)
     Route::get('/exam', [ExamController::class, 'index']);
     Route::post('/exam/create', [ExamController::class, 'create']);
     Route::put('/exam/update/{id}', [ExamController::class, 'update']);
+    Route::put('/exam/{id}/type', [ExamController::class, 'updateType']); // Update exam type only
     Route::delete('/exam/delete/{id}', [ExamController::class, 'delete']);
     Route::get('/exam/{id}', [ExamController::class, 'show']);
+
+    // Exam Date routes
+    Route::patch('/exam-date/{id}/status', [ExamDateController::class, 'updateStatus']);
+    Route::put('/exam-date/{id}', [ExamDateController::class, 'update']); // Update exam date details
+    Route::delete('/exam-date/{id}', [ExamDateController::class, 'destroy']); // Delete exam date
+    Route::get('/exam-dates/{id}/details', [ExamDateController::class, 'details']);
+    Route::get('/exam-dates/{examDateId}/halls/{locationId}/student-list', [ExamDateController::class, 'generateHallStudentList']);
+    Route::post('/exam/{examId}/exam-dates', [ExamDateController::class, 'addDateToExam']);
+    Route::post('/exam/{examId}/exam-dates/bulk', [ExamDateController::class, 'addMultipleDatesToExam']);
+
+    // Exam Results routes (Org Admin only)
+    Route::get('/exam-dates/{examDateId}/students', [ExamController::class, 'getExamDateStudents']);
+    Route::post('/exam-dates/{examDateId}/publish-results', [ExamController::class, 'publishExamResults']);
+    Route::get('/exam-dates/{examDateId}/published-results', [ExamController::class, 'getPublishedResults']);
+    Route::put('/exam-dates/{examDateId}/results/{resultId}', [ExamController::class, 'updatePublishedResult']);
+
+    // Location routes
+    Route::get('/locations', [LocationController::class, 'index']);
+    Route::post('/locations', [LocationController::class, 'store']);
+    Route::get('/locations/{id}', [LocationController::class, 'show']);
+    Route::put('/locations/{id}', [LocationController::class, 'update']);
+    Route::delete('/locations/{id}', [LocationController::class, 'destroy']);
+    Route::get('/organizations/{organizationId}/locations', [LocationController::class, 'getByOrganization']);
+
+    // Student registration routes (for testing purposes)
+    Route::post('/test/register-student', [\App\Http\Controllers\Api\StudentExamController::class, 'registerForExamDate']);
+    Route::post('/test/create-sample-students', [\App\Http\Controllers\Api\StudentExamController::class, 'createSampleStudents']);
 
     // Debug route to test user context
     Route::get('/debug/user-context', function (Request $request) {
@@ -72,6 +108,15 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
         ]);
     });
 
+    // Test route to debug CORS and authentication
+    Route::get('/debug/test', function (Request $request) {
+        return response()->json([
+            'message' => 'Authentication working',
+            'user' => $request->user()?->only(['id', 'name', 'email']),
+            'timestamp' => now()
+        ]);
+    });
+
     // Organization routes (token authentication requiredd)
     Route::get('/organization', [OrganizationController::class, 'index']);
     Route::post('/organization/create', [OrganizationController::class, 'create']);
@@ -79,4 +124,11 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::delete('/organization/delete/{id}', [OrganizationController::class, 'delete']);
     Route::get('/organization/{id}', [OrganizationController::class, 'show']);
     Route::post('/organization/{id}/logo', [OrganizationController::class, 'uploadLogo']);
+
+    // Student management (Org Admin / Super Admin)
+    Route::get('/students', [StudentAdminController::class, 'index']);
+    Route::post('/students', [StudentAdminController::class, 'store']);
+    Route::get('/students/{id}', [StudentAdminController::class, 'show']);
+    Route::put('/students/{id}', [StudentAdminController::class, 'update']);
+    Route::delete('/students/{id}', [StudentAdminController::class, 'destroy']);
 });

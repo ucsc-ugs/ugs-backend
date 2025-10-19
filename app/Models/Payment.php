@@ -21,6 +21,8 @@ class Payment extends Model
         'md5sig',
         'method',
         'status_message',
+        'commission_amount',
+        'net_amount',
     ];
 
     /**
@@ -31,6 +33,8 @@ class Payment extends Model
     protected $casts = [
         'payhere_amount' => 'decimal:2',
         'status_code' => 'integer',
+        'commission_amount' => 'decimal:2',
+        'net_amount' => 'decimal:2',
     ];
 
     public function studentExam()
