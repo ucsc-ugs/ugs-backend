@@ -19,6 +19,9 @@ Route::post('/login', [AuthController::class, 'authenticate']);
 // Protected routes (requires authentication)
 Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(function () {
 
+    // Super-admin password change
+    Route::put('/profile/password', [UserController::class, 'updatePassword']);
+
     Route::get('/revenue', [SuperAdminController::class, 'dashboard']);
 
     Route::get('/user', [UserController::class, 'user']);
