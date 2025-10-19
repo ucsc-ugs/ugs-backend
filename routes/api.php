@@ -27,6 +27,8 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     Route::delete('/students/{id}', [App\Http\Controllers\Api\StudentAdminController::class, 'destroy']);
     // Finance overview for org admins
     Route::get('/finance/overview', [App\Http\Controllers\Api\FinanceController::class, 'overview']);
+    // Org admin dashboard overview
+    Route::get('/org-admin/dashboard', [App\Http\Controllers\Api\OrgAdminDashboardController::class, 'overview']);
     //Org admin getting exam dates
     Route::get('/exam-dates', [App\Http\Controllers\Api\ExamController::class, 'getExamsWithPastDates']);
 });
