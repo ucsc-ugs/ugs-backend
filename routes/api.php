@@ -92,8 +92,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/student/exam-dates', [\App\Http\Controllers\StudentExamDateController::class, 'getStudentExamDates']);
 });
 
-// Email verification routes
+Route::middleware(['auth:sanctum', 'verified'])->group(function () {
+    // Protected routes that require email verification
+});
 
+// Email verification routes
 // verification notice
 Route::get('/email/verify', function () {
     return response()->json([
@@ -113,7 +116,7 @@ Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $requ
 Route::post('/email/verification-notification', function (Request $request) {
     $request->user()->sendEmailVerificationNotification();
 
-    return back()->with('message', 'Verification link sent!');
+    return response()->json(['message' => 'Verification link sent!']);
 })->middleware(['auth:sanctum', 'throttle:6,1'])->name('verification.send');
 
 // Add this outside any middleware group: (announcements should be public???)

@@ -25,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
             return (new MailMessage)
                 ->subject('Verify Email Address')
                 ->line('Click the button below to verify your email address.')
-                ->action('Verify Email Address', 'http://localhost:5173?verify=' . $url);
+                ->action('Verify Email Address', 'http://localhost:5173/verify?url=' . $url);
         });
     }
 }
