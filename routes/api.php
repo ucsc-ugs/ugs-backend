@@ -40,9 +40,7 @@ Route::get('/exams/{code_name}', [ExamController::class, 'show']); // Public exa
 
 Route::get('/exams/id/{id}', [\App\Http\Controllers\NotificationController::class, 'examDetails']); // Public exam details for students
 
-
 Route::post('/payment/notify', [PaymentController::class, 'notify'])->name('payment.notify');  // uses a public URL: https://6c8f55c58cf7.ngrok-free.app/payment/notify
-
 
 // Protected routes (requires authentication)
 Route::middleware('auth:sanctum')->group(function () {
@@ -58,18 +56,23 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('/profile', [UserController::class, 'updateProfile']);
     // Route::delete('/profile', [UserController::class, 'deleteProfile']);
     Route::put('/profile/password', [UserController::class, 'updatePassword']);
+
     Route::get('/complaints', [ComplaintController::class, 'getComplaints']);
     Route::post('/complaints', [ComplaintController::class, 'createComplaint']);
     Route::get('/complaints/{id}', [ComplaintController::class, 'getComplaint']);
     Route::put('/complaints/{id}', [ComplaintController::class, 'updateComplaint']);
     Route::delete('/complaints/{id}', [ComplaintController::class, 'deleteComplaint']);
+
     Route::post('/exam/register', [ExamController::class, 'regForExam']);
     Route::post('/payment/verify', [PaymentController::class, 'verify'])->name('payment.verify');
+
     Route::post('/announcements', [AnnouncementController::class, 'store']);
     Route::get('/announcements', [AnnouncementController::class, 'index']);
     Route::put('/announcements/{id}', [AnnouncementController::class, 'update']);
     Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy']);
+
     Route::get('/my-exams', [UserController::class, 'myExams']);
+
     Route::post('/reschedule-exam', [UserController::class, 'rescheduleExam']);
 });
 
