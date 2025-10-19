@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ExamDate;
+use App\Traits\CreatesNotifications;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -12,6 +13,7 @@ use Carbon\Carbon;
 
 class ExamDateController extends Controller
 {
+    use CreatesNotifications;
     /**
      * Update the status of an exam date
      */
@@ -44,7 +46,26 @@ class ExamDateController extends Controller
             }
         }
 
+        $oldStatus = $examDate->status;
         $examDate->update($validated);
+
+        // Send notification about status change
+        if ($oldStatus !== $validated['status']) {
+            $statusMessage = match($validated['status']) {
+                'upcoming' => 'rescheduled and is now upcoming',
+                'completed' => 'has been completed',
+                'cancelled' => 'has been cancelled',
+                default => 'status has been updated'
+            };
+            
+            $this->createNotification(
+                'Exam Date Status Updated',
+                "The exam \"{$examDate->exam->name}\" scheduled for " . Carbon::parse($examDate->date)->format('F j, Y \a\t g:i A') . " {$statusMessage}.",
+                $examDate->exam_id,
+                null,
+                false
+            );
+        }
 
         return response()->json([
             'message' => 'Exam date status updated successfully',
@@ -254,6 +275,18 @@ class ExamDateController extends Controller
         // Load the exam date with relationships
         $examDate->load('locations', 'exam');
 
+        // Send notification about new exam date
+        $locationNames = $examDate->locations->pluck('location_name')->join(', ');
+        $locationInfo = $locationNames ? " at {$locationNames}" : '';
+        
+        $this->createNotification(
+            'New Exam Date Added',
+            "A new date has been added for the exam \"{$exam->name}\" on " . Carbon::parse($examDate->date)->format('F j, Y \a\t g:i A') . "{$locationInfo}.",
+            $exam->id,
+            null,
+            false
+        );
+
         return response()->json([
             'message' => 'Exam date added successfully',
             'data' => $examDate
@@ -333,6 +366,16 @@ class ExamDateController extends Controller
 
             $createdExamDates[] = $examDate->load('locations', 'exam');
         }
+
+        // Send notification about multiple exam dates added
+        $dateCount = count($createdExamDates);
+        $this->createNotification(
+            'New Exam Dates Added',
+            "{$dateCount} new date" . ($dateCount > 1 ? 's have' : ' has') . " been added for the exam \"{$exam->name}\".",
+            $exam->id,
+            null,
+            false
+        );
 
         return response()->json([
             'message' => count($createdExamDates) . ' exam dates added successfully',
@@ -422,6 +465,18 @@ class ExamDateController extends Controller
                     ]);
                 }
             });
+
+            // Send notification about exam date update
+            $locationNames = $examDate->fresh(['locations'])->locations->pluck('location_name')->join(', ');
+            $locationInfo = $locationNames ? " Location(s): {$locationNames}." : '';
+            
+            $this->createNotification(
+                'Exam Date Updated',
+                "The exam \"{$examDate->exam->name}\" date has been updated to " . Carbon::parse($request->date)->format('F j, Y \a\t g:i A') . ".{$locationInfo}",
+                $examDate->exam_id,
+                null,
+                false
+            );
 
             \Illuminate\Support\Facades\Log::info('Exam date updated successfully', [
                 'exam_date_id' => $examDate->id,
@@ -799,8 +854,22 @@ class ExamDateController extends Controller
                 ], 400);
             }
 
+            // Store exam info before deletion for notification
+            $examName = $examDate->exam->name;
+            $examId = $examDate->exam_id;
+            $examDateFormatted = Carbon::parse($examDate->date)->format('F j, Y \a\t g:i A');
+
             // Delete the exam date
             $examDate->delete();
+
+            // Send notification about exam date deletion
+            $this->createNotification(
+                'Exam Date Deleted',
+                "The exam date for \"{$examName}\" scheduled on {$examDateFormatted} has been deleted.",
+                $examId,
+                null,
+                false
+            );
 
             return response()->json([
                 'message' => 'Exam date deleted successfully.'
