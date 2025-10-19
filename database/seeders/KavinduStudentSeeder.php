@@ -40,7 +40,7 @@ class KavinduStudentSeeder extends Seeder
             ]
         );
 
-        // 4. Get an exam from organization 1
+        // 4. Get an exam from organization 1 and ensure it has dates
         $exam = DB::table('exams')
             ->where('organization_id', 1)
             ->first();
@@ -49,6 +49,14 @@ class KavinduStudentSeeder extends Seeder
             $this->command->error('No exam found for organization 1. Please run OrgExamSeeder first.');
             return;
         }
+
+        // Update exam to have a registration deadline if it doesn't have one
+        DB::table('exams')
+            ->where('id', $exam->id)
+            ->update([
+                'registration_deadline' => Carbon::now()->addDays(15),
+                'updated_at' => now(),
+            ]);
 
         // 5. Register student for exam
         $studentExam = DB::table('student_exams')->updateOrInsert(
