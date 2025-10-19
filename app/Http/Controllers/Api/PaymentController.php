@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\StudentExam;
 use App\Models\RevenueTransaction;
+use App\Traits\CreatesNotifications;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,7 @@ use Illuminate\Support\Str;
 
 class PaymentController extends Controller
 {
+    use CreatesNotifications;
     public function initiatePayment(int $regId, int $amount, $userData)
     {
         $merchant_id = env('PAYHERE_MERCHANT_ID');
@@ -128,8 +130,17 @@ class PaymentController extends Controller
                     'currency' => $payhere_currency,
                     'status_message' => $this->getPaymentStatusMessage($status_code),
                 ];
-                
+
                 $student->notify(new \App\Notifications\PaymentNotification($paymentDetails));
+                
+                // Create in-app notification for the student
+                $this->createNotification(
+                    'Payment Successful',
+                    "Your payment of {$payhere_currency} {$payhere_amount} for exam \"{$exam->name}\" has been successfully processed. You will receive an email shortly.",
+                    null,
+                    $student->id,
+                    false
+                );
                 
                 // Create revenue transaction
                 $this->createRevenueTransaction(
@@ -143,15 +154,71 @@ class PaymentController extends Controller
             } else if ($status_code == 0) {
                 // Payment pending
                 $studentExam->update(['status' => 'pending']);
-            } else if (in_array($status_code, [-1, -2, -3])) {
-                // Payment rejected, failed, or charged back
+                
+                // Create in-app notification for pending payment
+                $student = $studentExam->student;
+                $this->createNotification(
+                    'Payment Pending',
+                    "Your payment of {$payhere_currency} {$payhere_amount} for exam \"{$exam->name}\" is pending.",
+                    null,
+                    $student->id,
+                    false
+                );
+            } else if ($status_code == -1) {
+                // Payment cancelled
+                $studentExam->update(['status' => 'rejected']);
+                
+                // Create in-app notification for cancelled payment
+                $student = $studentExam->student;
+                $this->createNotification(
+                    'Payment Cancelled',
+                    "Your payment of {$payhere_currency} {$payhere_amount} for exam \"{$exam->name}\" was cancelled.",
+                    null,
+                    $student->id,
+                    false
+                );
+            } else if ($status_code == -2) {
+                // Payment failed
+                $studentExam->update(['status' => 'rejected']);
+                
+                // Create in-app notification for failed payment
+                $student = $studentExam->student;
+                $this->createNotification(
+                    'Payment Failed',
+                    "Your payment of {$payhere_currency} {$payhere_amount} for exam \"{$exam->name}\" failed. Please try again.",
+                    null,
+                    $student->id,
+                    false
+                );
+            } else if ($status_code == -3) {
+                // Payment charged back
                 $studentExam->update(['status' => 'rejected']);
                 
                 // If there was a previous successful transaction, mark it as refunded
                 $this->handleRefund($studentExam);
+                
+                // Create in-app notification for charged back payment
+                $student = $studentExam->student;
+                $this->createNotification(
+                    'Payment Charged Back',
+                    "Your payment of {$payhere_currency} {$payhere_amount} for exam \"{$exam->name}\" was charged back.",
+                    null,
+                    $student->id,
+                    false
+                );
             } else {
                 // Payment failed or cancelled
                 $studentExam->update(['status' => 'rejected']);
+                
+                // Create in-app notification for unknown status
+                $student = $studentExam->student;
+                $this->createNotification(
+                    'Payment Issue',
+                    "There was an issue with your payment of {$payhere_currency} {$payhere_amount} for exam \"{$exam->name}\". Please contact support.",
+                    null,
+                    $student->id,
+                    false
+                );
             }
 
             DB::commit();

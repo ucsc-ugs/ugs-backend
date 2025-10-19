@@ -46,7 +46,7 @@ class PaymentNotification extends Notification
             ->line("Dear {$studentName},")
             ->line("We have received your payment for the exam \"{$examName}\".")
             ->line("**Amount:** {$currency} {$amount}")
-            ->line("**Status:** {$statusMessage}")
+            ->line("**Status:** Success")
             ->line('If you have any questions, contact the administrator.')
             ->salutation('Thanks, ' . config('app.name') . ' Team');
     }
