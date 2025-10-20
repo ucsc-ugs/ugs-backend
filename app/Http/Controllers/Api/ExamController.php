@@ -747,24 +747,41 @@ class ExamController extends Controller
 
             // Send notifications to all students who registered for this exam date
             if ($updatedCount > 0) {
-                $students = StudentExam::where('exam_id', $examDate->exam_id)
+                $students = StudentExam::with(['student', 'exam'])
+                    ->where('exam_id', $examDate->exam_id)
                     ->where('selected_exam_date_id', $examDateId)
                     ->get();
 
-                foreach ($students as $student) {
+                foreach ($students as $studentExam) {
+                    // Create in-app notification
                     $this->createNotification(
                         'Exam Results Published',
                         "Results for {$examDate->exam->name} on " . \Carbon\Carbon::parse($examDate->date)->format('F j, Y') . " have been published. Check your dashboard to view your results.",
                         null,
-                        $student->student_id,
+                        $studentExam->student_id,
                         false
                     );
+
+                    // Send email notification
+                    if ($studentExam->student && $studentExam->student->email) {
+                        $resultDetails = [
+                            'student_name' => $studentExam->student->name,
+                            'exam_name' => $studentExam->exam->name ?? 'Exam',
+                            'index_number' => $studentExam->index_number,
+                            'exam_date' => \Carbon\Carbon::parse($examDate->date)->format('F j, Y g:i A'),
+                            'result' => $studentExam->result ?? 'Pending',
+                            'attended' => $studentExam->attended ?? false
+                        ];
+
+                        $studentExam->student->notify(new \App\Notifications\ResultPublicationNotification($resultDetails));
+                    }
                 }
 
                 Log::info('Result publication notifications sent', [
                     'exam_date_id' => $examDateId,
                     'exam_id' => $examDate->exam_id,
                     'notification_count' => $students->count(),
+                    'email_count' => $students->filter(fn($s) => $s->student && $s->student->email)->count(),
                     'updated_by' => $user->id
                 ]);
             }
