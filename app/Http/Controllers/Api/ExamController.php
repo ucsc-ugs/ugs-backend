@@ -773,7 +773,15 @@ class ExamController extends Controller
                             'attended' => $studentExam->attended ?? false
                         ];
 
-                        $studentExam->student->notify(new \App\Notifications\ResultPublicationNotification($resultDetails));
+                        try {
+                            $studentExam->student->notify(new \App\Notifications\ResultPublicationNotification($resultDetails));
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send result publication email notification', [
+                                'student_id' => $studentExam->student_id,
+                                'exam_date_id' => $examDateId,
+                                'error' => $e->getMessage()
+                            ]);
+                        }
                     }
                 }
 
