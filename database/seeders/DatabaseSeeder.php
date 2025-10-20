@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             OrganizationAdminsSeeder::class,
             ExamsSeeder::class,
             StudentsSeeder::class,
+            ExamRegistrationsSeeder::class,
             NotificationsSeeder::class,
         ]);
     }
