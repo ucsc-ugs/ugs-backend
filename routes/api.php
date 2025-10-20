@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\ComplaintController;
 use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\StudentController;
@@ -58,12 +57,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('/profile', [UserController::class, 'updateProfile']);
     // Route::delete('/profile', [UserController::class, 'deleteProfile']);
     Route::put('/profile/password', [UserController::class, 'updatePassword']);
-
-    Route::get('/complaints', [ComplaintController::class, 'getComplaints']);
-    Route::post('/complaints', [ComplaintController::class, 'createComplaint']);
-    Route::get('/complaints/{id}', [ComplaintController::class, 'getComplaint']);
-    Route::put('/complaints/{id}', [ComplaintController::class, 'updateComplaint']);
-    Route::delete('/complaints/{id}', [ComplaintController::class, 'deleteComplaint']);
 
     Route::post('/exam/register', [ExamController::class, 'regForExam']);
     Route::post('/payment/verify', [PaymentController::class, 'verify'])->name('payment.verify');

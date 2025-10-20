@@ -58,8 +58,6 @@ Route::middleware(['auth:sanctum', 'role:org_admin|super_admin'])->group(functio
     // User Account Management
     Route::put('/change-password', [OrgAdminController::class, 'changePassword']);
 
-
-
     // Exam routes (token authentication required)
     Route::get('/exam', [ExamController::class, 'index']);
     Route::post('/exam/create', [ExamController::class, 'create']);
