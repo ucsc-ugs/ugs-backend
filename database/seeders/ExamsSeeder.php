@@ -134,7 +134,7 @@ class ExamsSeeder extends Seeder
             ],
         ];
 
-        $examCodes = ['GCAT', 'GCAT'];
+        $examCodes = ['GCCT', 'GCAT'];
 
         foreach ($examsData as $index => $examData) {
             // Prepare exam base data
@@ -199,5 +199,7 @@ class ExamsSeeder extends Seeder
                 }
             }
         }
+
+        $this->command->info('Exams seeder completed!');
     }
 }
