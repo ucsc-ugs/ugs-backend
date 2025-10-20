@@ -45,7 +45,11 @@ class StudentController extends Controller
             $user->assignRole('student');
 
             // Send email verification notification
-            $user->sendEmailVerificationNotification();
+            try {
+                $user->sendEmailVerificationNotification();
+            } catch (\Exception $e) {
+                Log::warning('Email verification notification failed: ' . $e->getMessage());
+            }
 
             // Create token
             $token = $user->createToken('auth-token')->plainTextToken;
