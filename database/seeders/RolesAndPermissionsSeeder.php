@@ -3,12 +3,10 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
-class RoleSeeder extends Seeder
+class RolesAndPermissionsSeeder extends Seeder
 {
     /**
      * Run the database seeds.
@@ -21,7 +19,7 @@ class RoleSeeder extends Seeder
         $studentRole = Role::firstOrCreate(['name' => 'student']);
 
         // Create permissions
-        $permissions = [
+        $allPermissions = [
             # Organizations management permissions (CRUD + admins)
             'organization.create',
             'organization.view',
@@ -53,11 +51,9 @@ class RoleSeeder extends Seeder
             'exam.announcement.publish',
             'exam.notification.send',
             'exam.change.notify',
-
-            # Exam locations
             'exam.location.manage',
 
-            # Finance management permissions (CRUD + payments)
+            # Finance and Payments management permissions (CRUD + payments)
             'finance.create',
             'finance.view',
             'finance.update',
@@ -66,7 +62,6 @@ class RoleSeeder extends Seeder
             'payments.view',
             'payments.update',
             'payments.delete',
-            'payments.refund',
 
             # Announcements and notifications permissions
             'announcement.create',
@@ -76,54 +71,20 @@ class RoleSeeder extends Seeder
             'announcement.publish',
         ];
 
-        foreach ($permissions as $permission) {
+        $studentPermissions = [
+            'organization.view',
+            'exam.view',
+            'student.detail.view',
+            'announcement.view',
+            'payments.view',
+        ];
+
+        foreach ($allPermissions as $permission) {
             Permission::firstOrCreate(['name' => $permission]);
         }
 
         // Assign permissions to roles
-        // Super admin gets everything
-        $superAdminRole->givePermissionTo($permissions);
-
-        // Org admin: allow viewing and managing students, exams and payments within their org
-        $orgAdminRole->givePermissionTo([
-            'organization.view',
-            'organization.update',
-            'organization.admins.create',
-            'organization.admins.view',
-            'organization.admins.update',
-            'organization.admins.delete',
-
-            'student.create',
-            'student.view',
-            'student.update',
-            'student.delete',
-            'student.detail.view',
-
-            'exam.create',
-            'exam.view',
-            'exam.update',
-            'exam.schedule.set',
-            'exam.schedule.update',
-            'exam.registration.deadline.set',
-            'exam.registration.deadline.extend',
-            'exam.location.manage',
-
-            'payments.view',
-            'payments.create',
-            'payments.update',
-
-            'announcement.create',
-            'announcement.view',
-            'announcement.update',
-            'announcement.publish',
-        ]);
-
-        // Student role: limited view-only permissions
-        $studentRole->givePermissionTo([
-            'exam.view',
-            'student.detail.view',
-            'announcement.view',
-            'payments.view',
-        ]);
+        $superAdminRole->givePermissionTo($allPermissions);
+        $studentRole->givePermissionTo($studentPermissions);
     }
 }
