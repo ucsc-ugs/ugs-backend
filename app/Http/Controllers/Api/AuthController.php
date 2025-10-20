@@ -71,4 +71,16 @@ class AuthController extends Controller
             'message' => 'Logged out successfully'
         ]);
     }
+
+    /**
+     * Check if the authenticated user's email is verified.
+     */
+    public function checkEmailVerified(Request $request)
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'verified' => !is_null($user->email_verified_at)
+        ]);
+    }
 }

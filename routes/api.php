@@ -48,11 +48,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/user', [UserController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::get('/email/verified', [AuthController::class, 'checkEmailVerified']);
 });
 
 // Protected routes (requires authentication + email verification)
 Route::middleware(['auth:sanctum'])->group(function () {
-    // ...existing code...
     Route::get('/profile', [UserController::class, 'user']);
     Route::patch('/profile', [UserController::class, 'updateProfile']);
     // Route::delete('/profile', [UserController::class, 'deleteProfile']);
