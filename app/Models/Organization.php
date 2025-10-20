@@ -13,7 +13,6 @@ class Organization extends Model
         'name',
         'description',
         'logo',
-        'admin_id',
         'status',
         'contact_email',
         'phone_number',

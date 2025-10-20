@@ -51,7 +51,7 @@ class Exam extends Model
         return $this->hasMany(StudentExam::class);
     }
 
-     public function revenueTransactions(): HasMany
+     public function revenueTransactions()
     {
         return $this->hasMany(RevenueTransaction::class);
     }

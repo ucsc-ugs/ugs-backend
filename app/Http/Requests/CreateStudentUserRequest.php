@@ -26,16 +26,21 @@ class CreateStudentUserRequest extends FormRequest
             'email' => 'required|email|unique:users,email|max:255',
             'password' => 'required|string|min:8|confirmed',
             'local' => 'required|boolean',
-            'passport_nic' => 'required|string|unique:students,passport_nic|max:20',
-             function ($attribute, $value, $fail) {
+            'passport_nic' => [
+                'required',
+                'string',
+                'unique:students,passport_nic',
+                'max:20',
+                function ($attribute, $value, $fail) {
                     // Only validate NIC format for local students
-                    if ($this->input('local') == true || $this->input('local') === '1') {
+                    if (request()->input('local') == true || request()->input('local') === '1') {
                         if (!$this->isValidNic($value)) {
                             $fail('The '.$attribute.' must be a valid Sri Lankan NIC number.');
                         }
                     }
                     // For foreign students, any passport format is accepted
                 },
+            ],
         ];
     }
 
