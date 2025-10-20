@@ -852,7 +852,7 @@ class ExamController extends Controller
 
         $results = $studentExams->map(function ($studentExam) {
             // Debug logging
-            \Log::info('StudentExam Debug', [
+            Log::info('StudentExam Debug', [
                 'student_exam_id' => $studentExam->id,
                 'student_id' => $studentExam->student_id,
                 'student_loaded' => $studentExam->relationLoaded('student'),
