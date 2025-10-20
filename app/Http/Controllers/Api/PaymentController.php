@@ -133,7 +133,11 @@ class PaymentController extends Controller
                     'status_message' => $this->getPaymentStatusMessage($status_code),
                 ];
 
-                $student->notify(new \App\Notifications\PaymentNotification($paymentDetails));
+                try {
+                    $student->notify(new \App\Notifications\PaymentNotification($paymentDetails));
+                } catch (\Exception $e) {
+                    Log::warning('Failed to send payment notification email: ' . $e->getMessage());
+                }
                 
                 // Create in-app notification for the student
                 $this->createNotification(
