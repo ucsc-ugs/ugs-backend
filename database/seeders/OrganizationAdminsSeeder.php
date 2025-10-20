@@ -60,16 +60,25 @@ class OrganizationAdminsSeeder extends Seeder
         ];
 
         // Create an organization admin for UCSC
+        $ucscOrganization = Organization::where('name', 'University of Colombo School of Computing')->first();
+        
         $ucscAdminUser = User::create([
             'name' => 'UCSC Organization Admin',
             'email' => 'orgadmin@ucsc.lk',
             'password' => Hash::make('password'),
             'user_type' => 'org-admin',
-            'organization_id' => Organization::where('name', 'University of Colombo School of Computing')->first()->id,
+            'organization_id' => $ucscOrganization->id,
             'email_verified_at' => now(),
         ]);
 
         $ucscAdminUser->assignRole('org_admin');
         $ucscAdminUser->givePermissionTo($orgAdminPermissions);
+
+        // Add to org_admins table
+        \App\Models\OrgAdmin::create([
+            'organization_id' => $ucscOrganization->id,
+            'user_id' => $ucscAdminUser->id,
+            'name' => $ucscAdminUser->name,
+        ]);
     }
 }
