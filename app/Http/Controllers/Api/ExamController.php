@@ -851,6 +851,15 @@ class ExamController extends Controller
             ->get();
 
         $results = $studentExams->map(function ($studentExam) {
+            // Debug logging
+            \Log::info('StudentExam Debug', [
+                'student_exam_id' => $studentExam->id,
+                'student_id' => $studentExam->student_id,
+                'student_loaded' => $studentExam->relationLoaded('student'),
+                'student_name' => $studentExam->student ? $studentExam->student->name : 'Student not loaded',
+                'student_object' => $studentExam->student
+            ]);
+            
             return [
                 'id' => $studentExam->id,
                 'index_number' => $studentExam->index_number,
