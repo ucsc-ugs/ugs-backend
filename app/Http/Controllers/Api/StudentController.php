@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateStudentUserRequest;
 use App\Http\Resources\UserResource;
+use App\Traits\CreatesNotifications;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class StudentController extends Controller
 {
+    use CreatesNotifications;
+
     /**
      * Create a new student account
      */
@@ -48,6 +51,15 @@ class StudentController extends Controller
             $token = $user->createToken('auth-token')->plainTextToken;
 
             DB::commit();
+
+            // Create notification for successful registration
+            $this->createNotification(
+                'Registration Successful',
+                'Your account has been created successfully. Please check your email to verify your account.',
+                null,
+                $user->id,
+                false
+            );
             
             return response()->json([
                 'message' => 'Registration successful! Please check your email to verify your account.',
@@ -90,6 +102,4 @@ class StudentController extends Controller
             ], 500);
         }
     }
-
-    
 }
