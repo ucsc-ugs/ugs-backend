@@ -36,7 +36,7 @@ class PaymentController extends Controller
             'merchant_id' => $merchant_id,
             'amount' => $amount,
             'currency' => $currency,
-            'notify_url' => 'https://b5dc8c9c0dc8.ngrok-free.app/api/payment/notify', // route('payment.notify'),
+            'notify_url' => 'https://1fcd80146b28.ngrok-free.app/api/payment/notify', // route('payment.notify'),
             'first_name' => $userData['first_name'],
             'last_name' => $userData['last_name'],
             'email' => $userData['email'],
@@ -92,6 +92,8 @@ class PaymentController extends Controller
             $payment = Payment::updateOrCreate(
                 [
                     'student_exam_id' => $studentExam->id,
+                ],
+                [
                     'payment_id' => $request->input('payment_id'),
                     'payhere_amount' => $payhere_amount,
                     'payhere_currency' => $payhere_currency,
