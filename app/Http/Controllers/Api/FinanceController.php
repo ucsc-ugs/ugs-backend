@@ -32,8 +32,15 @@ class FinanceController extends Controller
         }
 
         // Build aggregate query
+        // Note: We use a subquery for exam_date to avoid JOIN multiplication with exam_dates
+        $examDateSubquery = DB::table('exam_dates')
+            ->select('exam_id', DB::raw('MIN(date) as first_date'))
+            ->groupBy('exam_id');
+
         $query = DB::table('exams')
-            ->leftJoin('exam_dates', 'exam_dates.exam_id', '=', 'exams.id')
+            ->leftJoinSub($examDateSubquery, 'ed', function ($join) {
+                $join->on('ed.exam_id', '=', 'exams.id');
+            })
             ->leftJoin('student_exams', 'student_exams.exam_id', '=', 'exams.id')
             ->leftJoin('payments', 'payments.student_exam_id', '=', 'student_exams.id')
             ->leftJoin('organizations', 'organizations.id', '=', 'exams.organization_id')
@@ -47,13 +54,13 @@ class FinanceController extends Controller
             ->when($month, function ($q) use ($month) {
                 $q->whereRaw("to_char(student_exams.created_at, 'YYYY-MM') = ?", [$month]);
             })
-            ->groupBy('exams.id', 'exams.name', 'exams.price', 'organizations.name', 'exams.registration_deadline');
+            ->groupBy('exams.id', 'exams.name', 'exams.price', 'organizations.name', 'exams.registration_deadline', 'ed.first_date');
 
         // Aggregates
         $query->select([
             DB::raw('exams.id as id'),
             DB::raw('exams.name as exam_name'),
-            DB::raw('COALESCE(MIN(exam_dates.date), exams.registration_deadline) as exam_date'),
+            DB::raw('COALESCE(ed.first_date, exams.registration_deadline) as exam_date'),
             DB::raw('COALESCE(exams.price, 0) as exam_fee'),
             DB::raw('COALESCE(organizations.name, \'\') as university'),
             // counts
