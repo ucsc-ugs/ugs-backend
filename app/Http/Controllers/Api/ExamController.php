@@ -460,19 +460,25 @@ class ExamController extends Controller
             'selected_exam_date_id' => $selected_exam_date_id,
             'assigned_location_id' => $assigned_location_id,
             'payment_id' => null,
+            'status' => 'registered',
         ]);
 
-        $registration->load('exam');
+        $registration->load(['exam', 'selectedExamDate', 'assignedLocation']);
 
-        $paymentController = new PaymentController();
-        $payhere_form_data = $paymentController->initiatePayment($registration->id, $registration->exam->price, [
-            'first_name' => explode(' ', trim(Auth::user()->name))[0],
-            'last_name' => explode(' ', trim(Auth::user()->name))[1] ?? '',
-            'email' => Auth::user()->email,
-            'phone' => Auth::user()->phone,
+        return response()->json([
+            'message' => 'Exam registration completed successfully',
+            'data' => [
+                'registration_id' => $registration->id,
+                'index_number' => $registration->index_number,
+                'status' => $registration->status,
+                'exam_id' => $registration->exam_id,
+                'exam_name' => $registration->exam?->name,
+                'selected_exam_date_id' => $registration->selected_exam_date_id,
+                'selected_exam_date' => $registration->selectedExamDate?->date,
+                'assigned_location_id' => $registration->assigned_location_id,
+                'assigned_location' => $registration->assignedLocation?->location_name,
+            ]
         ]);
-
-        return response()->json($payhere_form_data);
     }
 
     /**
